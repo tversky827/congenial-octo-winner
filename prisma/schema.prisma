@@ -1,0 +1,97 @@
+// ShiftBoard data model.
+// Using SQLite by default for zero-config local/internal use. To move to Postgres,
+// change `provider` to "postgresql" and set DATABASE_URL accordingly (see .env.example).
+//
+// Note: SQLite doesn't support native enums, so status/role fields are stored as
+// strings. Their allowed values are enforced in the application layer (see
+// src/lib/validation.ts and the route handlers):
+//   Role         : "MANAGER" | "WORKER"
+//   ShiftStatus  : "OPEN" | "FILLED" | "COMPLETED" | "CANCELLED"
+//   ClaimStatus  : "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN"
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("WORKER")
+  // Position/title, e.g. "RN", "CNA", "Caregiver". Used to match shifts to staff.
+  position     String?
+  // Default hourly pay. A shift can override this, but it's a sensible fallback.
+  baseRate     Float    @default(0)
+  phone        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  postedShifts  Shift[]        @relation("PostedBy")
+  claims        Claim[]
+  notifications Notification[]
+}
+
+model Shift {
+  id           String   @id @default(cuid())
+  title        String
+  position     String // role required, e.g. "CNA"
+  location     String
+  startTime    DateTime
+  endTime      DateTime
+  // Unpaid break in minutes, subtracted from paid hours.
+  breakMinutes Int      @default(0)
+  hourlyRate   Float
+  // Extra per-hour pay on top of hourlyRate (night/weekend differential, incentive, etc.)
+  differential Float    @default(0)
+  // Hours worked in a single shift beyond this threshold are paid at overtime.
+  overtimeAfterHours Float @default(8)
+  overtimeMultiplier Float @default(1.5)
+  notes        String?
+  status       String   @default("OPEN")
+
+  postedById String
+  postedBy   User   @relation("PostedBy", fields: [postedById], references: [id])
+
+  claims Claim[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, startTime])
+}
+
+model Claim {
+  id        String    @id @default(cuid())
+  shiftId   String
+  shift     Shift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  workerId  String
+  worker    User      @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  status    String    @default("PENDING")
+  message   String? // optional note from the worker when claiming
+  createdAt DateTime  @default(now())
+  decidedAt DateTime?
+
+  // A worker can only have one claim per shift.
+  @@unique([shiftId, workerId])
+  @@index([shiftId, status])
+}
+
+model Notification {
+  id     String  @id @default(cuid())
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title  String
+  body   String
+  // In-app link the notification points to, e.g. "/shifts/abc123".
+  link   String?
+  read   Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}

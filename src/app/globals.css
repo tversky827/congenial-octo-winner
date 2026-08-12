@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+  font-family: var(--font-sans);
+  /* Respect iOS safe areas so the bottom nav clears the home indicator. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Prevent iOS zoom on input focus by keeping font-size >= 16px. */
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply btn bg-white text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-50;
+  }
+  .input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+  .card {
+    @apply rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}
