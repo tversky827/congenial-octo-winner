@@ -92,15 +92,30 @@ src/components/           UI (ShiftCard, forms, nav, notification bell, PWA inst
 public/                   PWA manifest, service worker, icons
 ```
 
-## Deploying
+## Deploying online (Vercel + Postgres)
 
-SQLite is perfect for local use and small single-server deployments. For hosted /
-multi-instance platforms (e.g. Vercel), switch to Postgres:
+Local dev uses SQLite with zero config. For cloud hosting the app needs a
+persistent Postgres database. That's already wired up — you don't edit the
+schema by hand:
 
-1. In `prisma/schema.prisma`, change `provider = "sqlite"` to `provider = "postgresql"`.
-2. Set `DATABASE_URL` to your Postgres connection string.
-3. Run `npx prisma migrate deploy` (or `npx prisma db push`).
-4. Set a strong `AUTH_SECRET` and your own `MANAGER_INVITE_CODE`.
+- `npm run build:vercel` derives a Postgres schema from `prisma/schema.prisma`
+  (via `scripts/make-prod-schema.mjs`), creates the tables, and builds the app.
+- [`vercel.json`](vercel.json) tells Vercel to use that build command.
+
+Steps:
+
+1. Create a free Postgres database (e.g. [Neon](https://neon.tech)) and copy its
+   **pooled** and **direct** connection strings.
+2. Import this repo into [Vercel](https://vercel.com/new).
+3. Add environment variables in Vercel:
+   - `DATABASE_URL` — the pooled connection string
+   - `DIRECT_URL` — the direct (non-pooled) connection string
+   - `AUTH_SECRET` — a long random string (`openssl rand -base64 48`)
+   - `MANAGER_INVITE_CODE` — your chosen manager sign-up code
+4. Deploy. On the live site, create the first account and choose
+   **"I'm a manager"** with your invite code — no seeding required in production.
+
+Any Postgres host works (Supabase, Railway, RDS, …); just provide the two URLs.
 
 ## Roadmap ideas
 

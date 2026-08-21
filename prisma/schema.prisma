@@ -11,6 +11,9 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" covers local dev; the rhel target is what Vercel's serverless
+  // runtime needs so the query engine loads in production.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {

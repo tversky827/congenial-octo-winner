@@ -16,6 +16,9 @@
 *.db
 *.db-journal
 
+# generated at deploy time from schema.prisma
+/prisma/schema.production.prisma
+
 # env
 .env
 .env*.local
