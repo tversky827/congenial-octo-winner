@@ -21,20 +21,15 @@ export const loginSchema = z.object({
 
 export const createShiftSchema = z
   .object({
-    title: z.string().trim().min(1, "Title is required").max(120),
     position: z.enum(["CNA", "Nurse"], { errorMap: () => ({ message: "Choose CNA or Nurse" }) }),
     // The facility the shift belongs to. Corporate must pick one; managers post
     // to their own facility, so the route fills it in when omitted.
     facilityId: z.string().trim().optional().or(z.literal("")),
-    location: z.string().trim().max(120).optional().or(z.literal("")),
     startTime: z.string().datetime({ offset: true }).or(z.string().min(1)),
     endTime: z.string().datetime({ offset: true }).or(z.string().min(1)),
-    // Pay is driven by each employee's own rate; a shift only carries optional
-    // extras (a differential, overtime rules), so no base $ amount is required.
-    differential: z.coerce.number().min(0).max(10000).default(0),
-    breakMinutes: z.coerce.number().int().min(0).max(600).default(0),
-    overtimeAfterHours: z.coerce.number().min(0).max(24).default(8),
-    overtimeMultiplier: z.coerce.number().min(1).max(5).default(1.5),
+    // Pay is the employee's own rate × hours. A shift can add an optional flat
+    // pick-up bonus, but no base $ amount is required.
+    bonus: z.coerce.number().min(0).max(100000).default(0),
     notes: z.string().trim().max(2000).optional().or(z.literal("")),
   })
   .refine((v) => new Date(v.endTime).getTime() > new Date(v.startTime).getTime(), {

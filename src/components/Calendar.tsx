@@ -14,10 +14,7 @@ export interface CalendarShift {
   startISO: string;
   endISO: string;
   status: string;
-  differential: number;
-  breakMinutes: number;
-  overtimeAfterHours: number;
-  overtimeMultiplier: number;
+  bonus: number;
 }
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -129,10 +126,7 @@ export function Calendar({
               startTime: s.startISO,
               endTime: s.endISO,
               hourlyRate: viewerRate ?? 0,
-              differential: s.differential,
-              breakMinutes: s.breakMinutes,
-              overtimeAfterHours: s.overtimeAfterHours,
-              overtimeMultiplier: s.overtimeMultiplier,
+              bonus: s.bonus,
             });
             const time = `${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
             return (
@@ -156,7 +150,7 @@ export function Calendar({
                         <p className="text-base font-bold text-brand-700">{formatMoney(pay.total)}</p>
                       </>
                     ) : (
-                      <p className="text-sm font-semibold text-slate-600">{formatHours(pay.paidHours)}</p>
+                      <p className="text-sm font-semibold text-slate-600">{formatHours(pay.hours)}</p>
                     )}
                   </div>
                 </div>

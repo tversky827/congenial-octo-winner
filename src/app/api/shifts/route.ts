@@ -42,16 +42,13 @@ export async function POST(req: Request) {
 
   const shift = await prisma.shift.create({
     data: {
-      title: d.title,
+      // No custom title anymore — derive a simple label from the role.
+      title: `${d.position} shift`,
       position: d.position,
       facilityId,
-      location: d.location || null,
       startTime: new Date(d.startTime),
       endTime: new Date(d.endTime),
-      differential: d.differential,
-      breakMinutes: d.breakMinutes,
-      overtimeAfterHours: d.overtimeAfterHours,
-      overtimeMultiplier: d.overtimeMultiplier,
+      bonus: d.bonus,
       notes: d.notes || null,
       postedById: user.id,
     },

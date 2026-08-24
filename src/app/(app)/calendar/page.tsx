@@ -41,10 +41,7 @@ export default async function CalendarPage({
     startISO: s.startTime.toISOString(),
     endISO: s.endTime.toISOString(),
     status: s.status,
-    differential: s.differential,
-    breakMinutes: s.breakMinutes,
-    overtimeAfterHours: s.overtimeAfterHours,
-    overtimeMultiplier: s.overtimeMultiplier,
+    bonus: s.bonus,
   }));
 
   return (

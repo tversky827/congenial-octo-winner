@@ -15,11 +15,7 @@ type ShiftWithFacility = {
   location: string | null;
   startTime: Date;
   endTime: Date;
-  breakMinutes: number;
-  hourlyRate: number;
-  differential: number;
-  overtimeAfterHours: number;
-  overtimeMultiplier: number;
+  bonus: number;
   notes: string | null;
   status: string;
   facility: { name: string } | null;
@@ -34,11 +30,7 @@ function toCardData(shift: ShiftWithFacility): ShiftCardData {
     location: shift.location,
     startTime: shift.startTime.toISOString(),
     endTime: shift.endTime.toISOString(),
-    breakMinutes: shift.breakMinutes,
-    hourlyRate: shift.hourlyRate,
-    differential: shift.differential,
-    overtimeAfterHours: shift.overtimeAfterHours,
-    overtimeMultiplier: shift.overtimeMultiplier,
+    bonus: shift.bonus,
     notes: shift.notes,
     status: shift.status,
   };

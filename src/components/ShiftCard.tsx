@@ -15,11 +15,7 @@ export interface ShiftCardData {
   location: string | null;
   startTime: string;
   endTime: string;
-  breakMinutes: number;
-  hourlyRate: number;
-  differential: number;
-  overtimeAfterHours: number;
-  overtimeMultiplier: number;
+  bonus: number;
   notes: string | null;
   status: string;
 }
@@ -45,16 +41,13 @@ export function ShiftCard({ shift, viewerRole, viewerRate, myClaimStatus, claimC
   const rate = isStaff ? viewerRate ?? 0 : 0;
   const hasRate = rate > 0;
 
-  // Pay is computed from the viewing employee's own rate. For managers/corporate
-  // (no single rate) we only use this for the hours figure.
+  // Pay = employee rate × hours + the shift's pick-up bonus. For managers /
+  // corporate (no single rate) we only use `hours`.
   const pay = computePay({
     startTime: shift.startTime,
     endTime: shift.endTime,
     hourlyRate: rate,
-    differential: shift.differential,
-    breakMinutes: shift.breakMinutes,
-    overtimeAfterHours: shift.overtimeAfterHours,
-    overtimeMultiplier: shift.overtimeMultiplier,
+    bonus: shift.bonus,
   });
 
   async function act(fn: () => Promise<Response>) {
@@ -97,6 +90,9 @@ export function ShiftCard({ shift, viewerRole, viewerRate, myClaimStatus, claimC
             {shift.facilityName && (
               <span className="chip bg-slate-100 text-slate-600">🏢 {shift.facilityName}</span>
             )}
+            {shift.bonus > 0 && (
+              <span className="chip bg-amber-100 text-amber-800">＋{formatMoney(shift.bonus)} bonus</span>
+            )}
             <StatusBadge status={shift.status} />
           </div>
           <h3 className="truncate text-base font-semibold text-slate-900">{shift.title}</h3>
@@ -107,7 +103,7 @@ export function ShiftCard({ shift, viewerRole, viewerRate, myClaimStatus, claimC
             <>
               <p className="text-xs text-slate-400">You&apos;d earn</p>
               <p className="text-xl font-bold text-brand-700">{formatMoney(pay.total)}</p>
-              <p className="text-xs text-slate-400">{formatRate(pay.effectiveRate)}</p>
+              <p className="text-xs text-slate-400">{formatRate(pay.hourlyRate)}</p>
             </>
           ) : isStaff ? (
             <>
@@ -118,7 +114,7 @@ export function ShiftCard({ shift, viewerRole, viewerRate, myClaimStatus, claimC
           ) : (
             <>
               <p className="text-xs text-slate-400">Length</p>
-              <p className="text-xl font-bold text-slate-700">{formatHours(pay.paidHours)}</p>
+              <p className="text-xl font-bold text-slate-700">{formatHours(pay.hours)}</p>
               <p className="text-xs text-slate-400">pay per staff rate</p>
             </>
           )}
@@ -127,7 +123,7 @@ export function ShiftCard({ shift, viewerRole, viewerRate, myClaimStatus, claimC
 
       <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
         <span>🕒 {formatDateRange(shift.startTime, shift.endTime)}</span>
-        <span className="font-medium">{formatHours(pay.paidHours)}</span>
+        <span className="font-medium">{formatHours(pay.hours)}</span>
       </div>
 
       {isStaff && hasRate && (
@@ -140,19 +136,8 @@ export function ShiftCard({ shift, viewerRole, viewerRate, myClaimStatus, claimC
       )}
       {isStaff && hasRate && showBreakdown && (
         <dl className="mt-2 space-y-1 rounded-xl border border-slate-100 p-3 text-sm">
-          <Row label={`Regular (${formatHours(pay.regularHours)} × ${formatMoney(pay.effectiveRate)})`} value={formatMoney(pay.regularPay)} />
-          {pay.overtimeHours > 0 && (
-            <Row
-              label={`Overtime (${formatHours(pay.overtimeHours)} × ${shift.overtimeMultiplier}×)`}
-              value={formatMoney(pay.overtimePay)}
-            />
-          )}
-          {shift.differential > 0 && (
-            <Row label="Includes differential" value={`+${formatMoney(shift.differential)}/hr`} muted />
-          )}
-          {shift.breakMinutes > 0 && (
-            <Row label="Unpaid break" value={`${shift.breakMinutes} min`} muted />
-          )}
+          <Row label={`${formatHours(pay.hours)} × ${formatMoney(pay.hourlyRate)}`} value={formatMoney(pay.basePay)} />
+          {pay.bonus > 0 && <Row label="Pick-up bonus" value={`+${formatMoney(pay.bonus)}`} />}
           <div className="mt-1 flex justify-between border-t border-slate-100 pt-2 font-semibold text-slate-900">
             <span>Estimated total</span>
             <span>{formatMoney(pay.total)}</span>

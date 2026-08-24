@@ -68,11 +68,8 @@ export default async function ManagePage({
             const pay = computePay({
               startTime: shift.startTime,
               endTime: shift.endTime,
-              hourlyRate: shift.hourlyRate,
-              differential: shift.differential,
-              breakMinutes: shift.breakMinutes,
-              overtimeAfterHours: shift.overtimeAfterHours,
-              overtimeMultiplier: shift.overtimeMultiplier,
+              hourlyRate: 0,
+              bonus: shift.bonus,
             });
             return (
               <div key={shift.id} className="card">
@@ -91,7 +88,10 @@ export default async function ManagePage({
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-400">Length</p>
-                    <p className="text-lg font-bold text-slate-700">{formatHours(pay.paidHours)}</p>
+                    <p className="text-lg font-bold text-slate-700">{formatHours(pay.hours)}</p>
+                    {shift.bonus > 0 && (
+                      <p className="text-xs font-medium text-amber-600">＋{formatMoney(shift.bonus)} bonus</p>
+                    )}
                   </div>
                 </div>
 
@@ -104,10 +104,7 @@ export default async function ManagePage({
                       startTime: shift.startTime,
                       endTime: shift.endTime,
                       hourlyRate: claim.worker.baseRate,
-                      differential: shift.differential,
-                      breakMinutes: shift.breakMinutes,
-                      overtimeAfterHours: shift.overtimeAfterHours,
-                      overtimeMultiplier: shift.overtimeMultiplier,
+                      bonus: shift.bonus,
                     });
                     return (
                       <div key={claim.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">

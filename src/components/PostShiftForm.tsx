@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { computePay } from "@/lib/pay";
-import { formatHours } from "@/lib/format";
+import { formatHours, formatMoney } from "@/lib/format";
 import { POSITIONS } from "@/lib/positions";
 
 // Combine a date (YYYY-MM-DD) and a time (HH:MM) into a local Date.
@@ -28,20 +28,14 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [form, setForm] = useState({
-    title: "",
     position: "",
     facilityId: "",
-    location: "",
     date: "",
     start: "",
     end: "",
-    differential: "0",
-    breakMinutes: "0",
-    overtimeAfterHours: "8",
-    overtimeMultiplier: "1.5",
+    bonus: "",
     notes: "",
   });
 
@@ -53,16 +47,11 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
   const preview = useMemo(() => {
     const times = buildTimes(form.date, form.start, form.end);
     if (!times) return null;
-    // Rate is per-employee, so the preview only needs the hours/OT breakdown.
-    return computePay({
-      startTime: times.startISO,
-      endTime: times.endISO,
-      hourlyRate: 0,
-      breakMinutes: parseInt(form.breakMinutes) || 0,
-      overtimeAfterHours: parseFloat(form.overtimeAfterHours) || 8,
-      overtimeMultiplier: parseFloat(form.overtimeMultiplier) || 1.5,
-    });
+    const pay = computePay({ startTime: times.startISO, endTime: times.endISO, hourlyRate: 0 });
+    return pay.hours;
   }, [form]);
+
+  const bonusNum = parseFloat(form.bonus) || 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,16 +71,11 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: form.title,
           position: form.position,
           facilityId: form.facilityId,
-          location: form.location,
           startTime: times.startISO,
           endTime: times.endISO,
-          differential: form.differential,
-          breakMinutes: form.breakMinutes,
-          overtimeAfterHours: form.overtimeAfterHours,
-          overtimeMultiplier: form.overtimeMultiplier,
+          bonus: form.bonus || 0,
           notes: form.notes,
         }),
       });
@@ -134,23 +118,13 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
           </div>
         )}
         <div>
-          <label className="label" htmlFor="title">Shift title</label>
-          <input className="input" id="title" required value={form.title} onChange={set("title")} placeholder="e.g. Day shift — Memory Care" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label" htmlFor="position">Role needed</label>
-            <select className="input" id="position" required value={form.position} onChange={set("position")}>
-              <option value="" disabled>Choose…</option>
-              {POSITIONS.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="location">Area / unit (optional)</label>
-            <input className="input" id="location" value={form.location} onChange={set("location")} placeholder="2nd Floor" />
-          </div>
+          <label className="label" htmlFor="position">Role needed</label>
+          <select className="input" id="position" required value={form.position} onChange={set("position")}>
+            <option value="" disabled>Choose…</option>
+            {POSITIONS.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="label" htmlFor="date">Date</label>
@@ -169,51 +143,35 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
       </div>
 
       <div className="card space-y-3">
-        <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
-          💡 No pay amount needed — each employee sees their own pay based on the rate set for
-          them. You can add an extra differential or a break below if this shift has them.
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label" htmlFor="differential">Extra differential ($/hr)</label>
-            <input className="input" id="differential" type="number" min="0" step="0.01" value={form.differential} onChange={set("differential")} placeholder="0" />
-          </div>
-          <div>
-            <label className="label" htmlFor="breakMinutes">Unpaid break (min)</label>
-            <input className="input" id="breakMinutes" type="number" min="0" step="5" value={form.breakMinutes} onChange={set("breakMinutes")} />
-          </div>
+        <div>
+          <label className="label" htmlFor="bonus">Pick-up bonus ($, optional)</label>
+          <input
+            className="input"
+            id="bonus"
+            type="number"
+            min="0"
+            step="1"
+            value={form.bonus}
+            onChange={set("bonus")}
+            placeholder="e.g. 50"
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            A flat bonus added on top of the employee&apos;s regular pay to help fill this shift.
+          </p>
         </div>
-
-        <button type="button" className="text-sm font-medium text-brand-600" onClick={() => setShowAdvanced((v) => !v)}>
-          {showAdvanced ? "Hide overtime settings" : "Overtime settings"}
-        </button>
-        {showAdvanced && (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label" htmlFor="ot">Overtime after (hrs)</label>
-              <input className="input" id="ot" type="number" min="0" step="0.5" value={form.overtimeAfterHours} onChange={set("overtimeAfterHours")} />
-            </div>
-            <div>
-              <label className="label" htmlFor="otm">Overtime multiplier</label>
-              <input className="input" id="otm" type="number" min="1" step="0.1" value={form.overtimeMultiplier} onChange={set("overtimeMultiplier")} />
-            </div>
-          </div>
-        )}
+        <div>
+          <label className="label" htmlFor="notes">Notes (optional)</label>
+          <textarea className="input" id="notes" rows={3} value={form.notes} onChange={set("notes")} placeholder="Anything the team should know before claiming." />
+        </div>
       </div>
 
-      <div>
-        <label className="label" htmlFor="notes">Notes (optional)</label>
-        <textarea className="input" id="notes" rows={3} value={form.notes} onChange={set("notes")} placeholder="Anything the team should know before claiming." />
-      </div>
-
-      {preview && (
+      {preview !== null && (
         <div className="rounded-2xl bg-brand-50 p-4 ring-1 ring-brand-100">
           <p className="text-sm text-brand-800">This shift is</p>
-          <p className="text-2xl font-bold text-brand-700">{formatHours(preview.paidHours)}</p>
+          <p className="text-2xl font-bold text-brand-700">{formatHours(preview)}</p>
           <p className="text-sm text-brand-800/80">
-            of paid time{preview.overtimeHours > 0 && ` (incl. ${formatHours(preview.overtimeHours)} OT)`}. Each
-            employee sees their own pay from their rate
-            {form.differential && parseFloat(form.differential) > 0 ? ` + $${form.differential}/hr differential` : ""}.
+            Each employee earns their hourly rate × {formatHours(preview)}
+            {bonusNum > 0 ? ` + ${formatMoney(bonusNum)} pick-up bonus` : ""}.
           </p>
         </div>
       )}

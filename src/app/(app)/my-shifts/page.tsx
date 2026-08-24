@@ -16,11 +16,7 @@ function toCardData(shift: Shift & { facility: { name: string } | null }): Shift
     location: shift.location,
     startTime: shift.startTime.toISOString(),
     endTime: shift.endTime.toISOString(),
-    breakMinutes: shift.breakMinutes,
-    hourlyRate: shift.hourlyRate,
-    differential: shift.differential,
-    overtimeAfterHours: shift.overtimeAfterHours,
-    overtimeMultiplier: shift.overtimeMultiplier,
+    bonus: shift.bonus,
     notes: shift.notes,
     status: shift.status,
   };
