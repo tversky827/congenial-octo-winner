@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, canManage } from "@/lib/auth";
 
 export default async function Home() {
   const user = await getCurrentUser();
-  redirect(user ? "/shifts" : "/login");
+  if (!user) redirect("/login");
+  redirect(canManage(user) ? "/schedule" : "/shifts");
 }

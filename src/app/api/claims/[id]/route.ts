@@ -61,7 +61,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       where: { id: { in: otherClaims.map((c) => c.id) } },
       data: { status: "REJECTED", decidedAt: new Date() },
     }),
-    prisma.shift.update({ where: { id: claim.shiftId }, data: { status: "FILLED" } }),
+    prisma.shift.update({ where: { id: claim.shiftId }, data: { status: "FILLED", assignedToId: claim.workerId } }),
   ]);
 
   await notify({

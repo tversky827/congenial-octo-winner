@@ -44,7 +44,7 @@ export function AuthForm() {
         setLoading(false);
         return;
       }
-      window.location.href = data.role === "WORKER" ? "/shifts" : "/shifts";
+      window.location.href = data.role === "WORKER" ? "/shifts" : "/schedule";
     } catch {
       setError("Network error — please try again");
       setLoading(false);

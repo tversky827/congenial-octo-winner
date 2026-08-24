@@ -50,6 +50,28 @@ export const facilityCreateSchema = z.object({
   address: z.string().trim().max(200).optional().or(z.literal("")),
 });
 
+const timeString = z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM");
+
+export const templateShiftSchema = z.object({
+  facilityId: z.string().min(1),
+  position: z.enum(["CNA", "Nurse"]),
+  dayOfWeek: z.coerce.number().int().min(0).max(6),
+  startTime: timeString,
+  endTime: timeString,
+  count: z.coerce.number().int().min(1).max(50).default(1),
+  bonus: z.coerce.number().min(0).max(100000).default(0),
+});
+
+export const generateWeekSchema = z.object({
+  facilityId: z.string().min(1),
+  weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Bad week"),
+});
+
+export const assignShiftSchema = z.object({
+  // null / empty clears the assignment (back to planned or open).
+  workerId: z.string().nullable().optional(),
+});
+
 export const userUpdateSchema = z.object({
   role: z.enum(["CORPORATE", "MANAGER", "WORKER"]).optional(),
   facilityId: z.string().trim().nullable().optional(),

@@ -27,37 +27,47 @@ export default async function MyShiftsPage() {
   if (!user) redirect("/login");
   if (user.role !== "WORKER") redirect("/shifts");
 
-  const claims = await prisma.claim.findMany({
-    where: { workerId: user.id, status: { in: ["PENDING", "APPROVED"] } },
-    include: { shift: { include: { facility: { select: { name: true } } } } },
-    orderBy: { shift: { startTime: "asc" } },
-  });
+  // Confirmed = shifts I'm assigned to (by the scheduler or via an approved claim),
+  // but only once the week is live. Waiting = my pending marketplace claims.
+  const [confirmed, pending] = await Promise.all([
+    prisma.shift.findMany({
+      where: {
+        assignedToId: user.id,
+        status: { in: ["ASSIGNED", "FILLED"] },
+        OR: [{ schedule: { published: true } }, { scheduleId: null }],
+      },
+      include: { facility: { select: { name: true } } },
+      orderBy: { startTime: "asc" },
+    }),
+    prisma.claim.findMany({
+      where: { workerId: user.id, status: "PENDING" },
+      include: { shift: { include: { facility: { select: { name: true } } } } },
+      orderBy: { shift: { startTime: "asc" } },
+    }),
+  ]);
 
-  const confirmed = claims.filter((c) => c.status === "APPROVED");
-  const pending = claims.filter((c) => c.status === "PENDING");
-
-  const totalUpcoming = confirmed.length;
+  const nothing = confirmed.length === 0 && pending.length === 0;
 
   return (
     <div>
-      <PageHeader title="My shifts" subtitle="Shifts you've claimed or been assigned." />
+      <PageHeader title="My shifts" subtitle="Shifts you're scheduled for or have claimed." />
 
-      {claims.length === 0 ? (
+      {nothing ? (
         <EmptyState
           emoji="🗓️"
-          title="You haven't claimed any shifts"
-          body="Head to Shifts to find open shifts and claim the ones you want."
+          title="Nothing scheduled yet"
+          body="When your manager schedules you — or you claim an open shift — it shows here."
         />
       ) : (
         <div className="space-y-6">
           {confirmed.length > 0 && (
             <section>
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
-                Confirmed ({totalUpcoming})
+                Confirmed ({confirmed.length})
               </h2>
               <div className="space-y-3">
-                {confirmed.map((c) => (
-                  <ShiftCard key={c.id} shift={toCardData(c.shift)} viewerRole="WORKER" viewerRate={user.baseRate} myClaimStatus="APPROVED" />
+                {confirmed.map((s) => (
+                  <ShiftCard key={s.id} shift={toCardData(s)} viewerRole="WORKER" viewerRate={user.baseRate} myClaimStatus="APPROVED" showActions={false} />
                 ))}
               </div>
             </section>

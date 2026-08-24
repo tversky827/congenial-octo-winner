@@ -1,16 +1,18 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { weekStartOf, combineDayTime } from "../src/lib/week";
 
 const prisma = new PrismaClient();
 
 // Demo password for every seeded account. Change these after first login.
 const DEMO_PASSWORD = "password123";
 
-function at(dayOffset: number, hour: number, minute = 0): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + dayOffset);
-  d.setHours(hour, minute, 0, 0);
-  return d;
+// Build a shift's start/end within the current week (dayOffset: 0=Mon…6=Sun).
+function slot(weekStart: Date, dayOffset: number, start: string, end: string) {
+  const startTime = combineDayTime(weekStart, dayOffset, start);
+  let endTime = combineDayTime(weekStart, dayOffset, end);
+  if (endTime.getTime() <= startTime.getTime()) endTime = new Date(endTime.getTime() + 86400000);
+  return { startTime, endTime };
 }
 
 async function main() {
@@ -67,7 +69,7 @@ async function main() {
   });
 
   // Staff, each tied to one facility.
-  await prisma.user.upsert({
+  const jordan = await prisma.user.upsert({
     where: { email: "jordan@goldwatercare.com" },
     update: {},
     create: {
@@ -94,39 +96,43 @@ async function main() {
     },
   });
 
-  const existingShifts = await prisma.shift.count();
-  if (existingShifts === 0) {
-    await prisma.shift.createMany({
+  // Staffing template (the weekly "budget" of coverage per facility).
+  if ((await prisma.templateShift.count()) === 0) {
+    await prisma.templateShift.createMany({
       data: [
-        {
-          title: "CNA shift",
-          position: "CNA",
-          facilityId: sunrise.id,
-          startTime: at(1, 7),
-          endTime: at(1, 15),
-          notes: "Familiarity with dementia care preferred.",
-          postedById: corporate.id,
-        },
-        {
-          title: "Nurse shift",
-          position: "Nurse",
-          facilityId: sunrise.id,
-          startTime: at(3, 15),
-          endTime: at(3, 21),
-          bonus: 25,
-          postedById: corporate.id,
-        },
-        {
-          title: "Nurse shift",
-          position: "Nurse",
-          facilityId: main.id,
-          startTime: at(1, 19),
-          endTime: at(2, 7),
-          bonus: 75,
-          notes: "Overnight — pick-up bonus included.",
-          postedById: corporate.id,
-        },
+        { facilityId: sunrise.id, position: "CNA", dayOfWeek: 2, startTime: "07:00", endTime: "15:00", count: 2 },
+        { facilityId: sunrise.id, position: "Nurse", dayOfWeek: 2, startTime: "19:00", endTime: "07:00", count: 1, bonus: 25 },
+        { facilityId: main.id, position: "Nurse", dayOfWeek: 3, startTime: "19:00", endTime: "07:00", count: 2, bonus: 50 },
       ],
+    });
+  }
+
+  // A published week at Sunrise so staff have something to see: one CNA shift
+  // pre-assigned to Jordan, plus open shifts in the marketplace.
+  const weekStart = weekStartOf(new Date());
+  if ((await prisma.schedule.count()) === 0) {
+    const schedule = await prisma.schedule.create({
+      data: { facilityId: sunrise.id, weekStart, published: true, publishedAt: new Date() },
+    });
+    const cnaDay = slot(weekStart, 2, "07:00", "15:00");
+    const nurseNight = slot(weekStart, 2, "19:00", "07:00");
+    await prisma.shift.create({
+      data: {
+        title: "CNA shift", position: "CNA", facilityId: sunrise.id, scheduleId: schedule.id,
+        ...cnaDay, status: "ASSIGNED", assignedToId: jordan.id, postedById: corporate.id,
+      },
+    });
+    await prisma.shift.create({
+      data: {
+        title: "CNA shift", position: "CNA", facilityId: sunrise.id, scheduleId: schedule.id,
+        ...cnaDay, status: "OPEN", postedById: corporate.id,
+      },
+    });
+    await prisma.shift.create({
+      data: {
+        title: "Nurse shift", position: "Nurse", facilityId: sunrise.id, scheduleId: schedule.id,
+        ...nurseNight, status: "OPEN", bonus: 25, postedById: corporate.id,
+      },
     });
   }
 

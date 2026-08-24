@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, canManage } from "@/lib/auth";
 import { AuthForm } from "@/components/AuthForm";
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME || "Goldwater Care";
 
 export default async function LoginPage() {
   const user = await getCurrentUser();
-  if (user) redirect("/shifts");
+  if (user) redirect(canManage(user) ? "/schedule" : "/shifts");
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-brand-800 to-brand-900 px-5 py-10">

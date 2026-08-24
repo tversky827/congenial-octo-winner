@@ -6,8 +6,16 @@
 // strings. Their allowed values are enforced in the application layer (see
 // src/lib/validation.ts and the route handlers):
 //   Role         : "CORPORATE" | "MANAGER" | "WORKER"
-//   ShiftStatus  : "OPEN" | "FILLED" | "COMPLETED" | "CANCELLED"
+//   ShiftStatus  : "PLANNED" | "ASSIGNED" | "OPEN" | "FILLED" | "COMPLETED" | "CANCELLED"
 //   ClaimStatus  : "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN"
+//
+// Shift lifecycle (scheduling-first):
+//   PLANNED  — built from the facility's staffing template into a draft week
+//   ASSIGNED — the scheduler placed one of our employees on it
+//   OPEN     — the week was published and this shift was still empty, so it went
+//              to the marketplace for staff to claim
+//   FILLED   — an OPEN shift was claimed and approved
+//   CANCELLED / COMPLETED — as before
 //
 // Multi-facility model:
 //   - CORPORATE users oversee every facility (facilityId is null).
@@ -36,8 +44,45 @@ model Facility {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  users  User[]
+  users          User[]
+  shifts         Shift[]
+  templateShifts TemplateShift[]
+  schedules      Schedule[]
+}
+
+// A recurring weekly staffing requirement for a facility — the "budget" the
+// corporate admin sets. Each row means: this facility needs `count` shifts of
+// `position` on `dayOfWeek` from `startTime`–`endTime`. Weeks are generated from
+// these into PLANNED shifts.
+model TemplateShift {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  position   String // CNA | Nurse
+  dayOfWeek  Int // 0 = Monday … 6 = Sunday
+  startTime  String // "07:00"
+  endTime    String // "15:00"
+  count      Int      @default(1)
+  bonus      Float    @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([facilityId, dayOfWeek])
+}
+
+// One facility's schedule for one week. Holds the publish state.
+model Schedule {
+  id          String    @id @default(cuid())
+  facilityId  String
+  facility    Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  weekStart   DateTime // Monday 00:00 UTC of the week
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+
   shifts Shift[]
+
+  @@unique([facilityId, weekStart])
 }
 
 model User {
@@ -57,9 +102,10 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  postedShifts  Shift[]        @relation("PostedBy")
-  claims        Claim[]
-  notifications Notification[]
+  postedShifts    Shift[]        @relation("PostedBy")
+  assignedShifts  Shift[]        @relation("AssignedShifts")
+  claims          Claim[]
+  notifications   Notification[]
 
   @@index([facilityId])
 }
@@ -92,12 +138,23 @@ model Shift {
   postedById String
   postedBy   User   @relation("PostedBy", fields: [postedById], references: [id])
 
+  // The week/schedule this shift belongs to (null for ad-hoc marketplace shifts).
+  scheduleId String?
+  schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  // The employee placed on this shift — set by the scheduler (ASSIGNED) or by an
+  // approved marketplace claim (FILLED).
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedShifts", fields: [assignedToId], references: [id])
+
   claims Claim[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([facilityId, status, startTime])
+  @@index([scheduleId])
+  @@index([assignedToId])
 }
 
 model Claim {

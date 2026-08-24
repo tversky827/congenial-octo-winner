@@ -25,9 +25,19 @@ export default async function CalendarPage({
     where: {
       status: { not: "CANCELLED" },
       startTime: { gte: windowStart, lte: windowEnd },
-      // Staff only see shifts for their own role; managers/corporate see all roles.
-      ...(user.role === "WORKER" ? { position: user.position ?? "__no_role__" } : {}),
       ...facilityScopeWhere(user, selectedFacility),
+      // Staff see only their role, and only published open shifts or shifts
+      // they're assigned to (never other people's drafts).
+      ...(user.role === "WORKER"
+        ? {
+            position: user.position ?? "__no_role__",
+            OR: [
+              { status: "OPEN" },
+              { assignedToId: user.id, schedule: { published: true } },
+              { assignedToId: user.id, scheduleId: null },
+            ],
+          }
+        : {}),
     },
     orderBy: { startTime: "asc" },
     include: { facility: { select: { name: true } } },

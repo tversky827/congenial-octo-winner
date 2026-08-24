@@ -16,6 +16,7 @@ function Icon({ path }: { path: string }) {
 
 const ICONS = {
   shifts: "M4 7h16M4 12h16M4 17h10",
+  schedule: "M7 3v3m10-3v3M4 8h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Zm3 8h.01M12 14h.01M16 14h.01",
   post: "M12 5v14M5 12h14",
   mine: "M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m-9 0h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z",
   approvals: "M9 12l2 2 4-4m-7 8h6a4 4 0 0 0 4-4V8a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v6a4 4 0 0 0 4 4Z",
@@ -54,14 +55,14 @@ export function BottomNav({ role }: { role: "CORPORATE" | "MANAGER" | "WORKER" }
   let items: Item[];
   if (role === "CORPORATE") {
     items = [
-      { href: "/shifts", label: "Shifts", icon: <Icon path={ICONS.shifts} /> },
+      { href: "/schedule", label: "Schedule", icon: <Icon path={ICONS.schedule} /> },
       { href: "/manage", label: "Approvals", icon: <Icon path={ICONS.approvals} /> },
       { href: "/admin/facilities", label: "Admin", icon: <Icon path={ICONS.admin} /> },
       { href: "/notifications", label: "Alerts", icon: <Icon path={ICONS.alerts} />, badge: true },
     ];
   } else if (role === "MANAGER") {
     items = [
-      { href: "/shifts", label: "Shifts", icon: <Icon path={ICONS.shifts} /> },
+      { href: "/schedule", label: "Schedule", icon: <Icon path={ICONS.schedule} /> },
       { href: "/manage", label: "Approvals", icon: <Icon path={ICONS.approvals} /> },
       { href: "/notifications", label: "Alerts", icon: <Icon path={ICONS.alerts} />, badge: true },
     ];

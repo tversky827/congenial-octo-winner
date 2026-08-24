@@ -73,7 +73,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   // If this worker had been approved, reopen the shift.
   if (existing.status === "APPROVED") {
-    await prisma.shift.update({ where: { id: params.id }, data: { status: "OPEN" } });
+    await prisma.shift.update({ where: { id: params.id }, data: { status: "OPEN", assignedToId: null } });
     await notifyFacilityManagers(existing.shift.facilityId, {
       title: "Approved worker withdrew",
       body: `${user.name} withdrew from a shift they were assigned. It's open again.`,
