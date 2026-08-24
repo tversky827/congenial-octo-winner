@@ -1,13 +1,13 @@
 {
-  "name": "ShiftBoard",
-  "short_name": "ShiftBoard",
+  "name": "Goldwater Care Shifts",
+  "short_name": "Goldwater Care",
   "description": "Post open shifts, claim them, and see exactly what you'll earn.",
   "start_url": "/shifts",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#236b59",
+  "background_color": "#00263c",
+  "theme_color": "#00263c",
   "icons": [
     {
       "src": "/icons/icon.svg",

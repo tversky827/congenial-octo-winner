@@ -8,17 +8,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Goldwater Care brand: navy #00263c + sky blue #97c0d5.
         brand: {
-          50: "#eef7f4",
-          100: "#d6ece4",
-          200: "#aed9cb",
-          300: "#7cc0ac",
-          400: "#4ba088",
-          500: "#2f866f",
-          600: "#236b59",
-          700: "#1e5649",
-          800: "#1a453c",
-          900: "#163a33",
+          50: "#eef5f9",
+          100: "#d9e9f1",
+          200: "#b9d6e5",
+          300: "#97c0d5",
+          400: "#6ba0bd",
+          500: "#3f7ea1",
+          600: "#1c5578",
+          700: "#0d3f5e",
+          800: "#00263c",
+          900: "#001a2b",
         },
       },
       fontFamily: {

@@ -30,12 +30,8 @@ export function TopBar({
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-100 bg-white/90 px-4 py-3 backdrop-blur">
       <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M9 3h6a1 1 0 0 1 1 1v1h1.5A2.5 2.5 0 0 1 20 7.5v10A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-10A2.5 2.5 0 0 1 6.5 5H8V4a1 1 0 0 1 1-1Z" fill="white" />
-            <path d="m8.5 13 2 2 4-4" stroke="#236b59" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/icon.svg" alt="Goldwater Care" className="h-9 w-9" />
         <div className="leading-tight">
           <p className="text-sm font-semibold text-slate-900">Hi, {firstName}</p>
           <p className="text-xs text-slate-500">
