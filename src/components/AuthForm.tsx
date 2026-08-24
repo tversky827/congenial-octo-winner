@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { POSITIONS } from "@/lib/positions";
 
 type Mode = "login" | "register";
 type Access = "WORKER" | "MANAGER" | "CORPORATE";
@@ -115,10 +116,18 @@ export function AuthForm() {
               </div>
             </div>
 
-            <div>
-              <label className="label" htmlFor="position">Your role (optional)</label>
-              <input className="input" id="position" name="position" placeholder="e.g. CNA, RN, Caregiver" />
-            </div>
+            {access === "WORKER" && (
+              <div>
+                <label className="label" htmlFor="position">Your role</label>
+                <select className="input" id="position" name="position" required defaultValue="">
+                  <option value="" disabled>Choose your role…</option>
+                  {POSITIONS.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-400">You&apos;ll only see shifts for your role.</p>
+              </div>
+            )}
 
             {needsFacility && (
               <div>

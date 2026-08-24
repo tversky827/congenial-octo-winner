@@ -22,6 +22,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!canAccessFacility(user, shift.facilityId)) {
     return NextResponse.json({ error: "That shift is at a different facility" }, { status: 403 });
   }
+  if (shift.position !== user.position) {
+    return NextResponse.json({ error: "That shift is for a different role" }, { status: 403 });
+  }
   if (shift.status !== "OPEN") {
     return NextResponse.json({ error: "This shift is no longer open" }, { status: 409 });
   }

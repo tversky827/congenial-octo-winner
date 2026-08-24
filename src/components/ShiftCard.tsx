@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { computePay } from "@/lib/pay";
 import { formatDateRange, formatHours, formatMoney, formatRate } from "@/lib/format";
 import { StatusBadge } from "./StatusBadge";
+import { DeleteShiftButton } from "./DeleteShiftButton";
 
 export interface ShiftCardData {
   id: string;
@@ -191,14 +192,17 @@ export function ShiftCard({ shift, viewerRole, viewerRate, myClaimStatus, claimC
 
       {/* Manager / corporate summary */}
       {viewerRole !== "WORKER" && (
-        <div className="mt-3 text-sm text-slate-500">
-          {claimCount > 0 ? (
-            <span className="font-medium text-brand-700">
-              {claimCount} {claimCount === 1 ? "person has" : "people have"} claimed this
-            </span>
-          ) : shift.status === "OPEN" ? (
-            "No claims yet"
-          ) : null}
+        <div className="mt-3 flex items-center justify-between gap-2 text-sm text-slate-500">
+          <span>
+            {claimCount > 0 ? (
+              <span className="font-medium text-brand-700">
+                {claimCount} {claimCount === 1 ? "person has" : "people have"} claimed this
+              </span>
+            ) : shift.status === "OPEN" ? (
+              "No claims yet"
+            ) : null}
+          </span>
+          <DeleteShiftButton shiftId={shift.id} />
         </div>
       )}
     </div>

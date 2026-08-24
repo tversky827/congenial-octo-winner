@@ -25,6 +25,8 @@ export default async function CalendarPage({
     where: {
       status: { not: "CANCELLED" },
       startTime: { gte: windowStart, lte: windowEnd },
+      // Staff only see shifts for their own role; managers/corporate see all roles.
+      ...(user.role === "WORKER" ? { position: user.position ?? "__no_role__" } : {}),
       ...facilityScopeWhere(user, selectedFacility),
     },
     orderBy: { startTime: "asc" },

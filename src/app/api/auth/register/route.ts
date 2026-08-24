@@ -34,6 +34,11 @@ export async function POST(req: Request) {
     resolvedFacilityId = facility.id;
   }
 
+  // Staff must pick their role (CNA or Nurse) — it decides which shifts they see.
+  if (accessType === "WORKER" && !position) {
+    return NextResponse.json({ error: "Please choose your role (CNA or Nurse)" }, { status: 400 });
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return NextResponse.json(

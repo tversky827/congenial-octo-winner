@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { POSITIONS } from "@/lib/positions";
 
 export interface PersonRow {
   id: string;
@@ -106,6 +107,23 @@ export function PeopleManager({
                     ))}
                   </select>
                 </div>
+                {p.role === "WORKER" && (
+                  <div className="col-span-2">
+                    <label className="mb-1 block text-xs text-slate-500">Staff role</label>
+                    <select
+                      className="input py-2 text-sm"
+                      value={p.position ?? ""}
+                      disabled={savingId === p.id}
+                      onChange={(e) => patch(p.id, { position: e.target.value })}
+                    >
+                      <option value="" disabled>Choose a role…</option>
+                      {POSITIONS.map((pos) => (
+                        <option key={pos} value={pos}>{pos}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[11px] text-slate-400">Sets which shifts they can see and claim.</p>
+                  </div>
+                )}
                 {p.role !== "CORPORATE" && (
                   <div className="col-span-2">
                     <label className="mb-1 block text-xs text-slate-500">Pay rate ($/hr)</label>

@@ -52,3 +52,37 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
+
+// Permanently delete a shift (scheduler/corporate, own facility). Notifies anyone
+// with an active claim; their claims are removed with the shift (cascade).
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  if (!canManage(user)) {
+    return NextResponse.json({ error: "Only schedulers can delete shifts" }, { status: 403 });
+  }
+
+  const shift = await prisma.shift.findUnique({
+    where: { id: params.id },
+    include: { claims: { where: { status: { in: ["PENDING", "APPROVED"] } } } },
+  });
+  if (!shift) return NextResponse.json({ error: "Shift not found" }, { status: 404 });
+  if (!canAccessFacility(user, shift.facilityId)) {
+    return NextResponse.json({ error: "That shift is at a different facility" }, { status: 403 });
+  }
+
+  // Notify people who had claimed it, before it's gone.
+  await Promise.all(
+    shift.claims.map((c) =>
+      notify({
+        userId: c.workerId,
+        title: "Shift removed",
+        body: `"${shift.title}" was removed by the scheduler.`,
+        link: `/shifts`,
+      })
+    )
+  );
+
+  await prisma.shift.delete({ where: { id: shift.id } });
+  return NextResponse.json({ ok: true });
+}

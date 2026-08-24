@@ -4,7 +4,8 @@ export const registerSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(80),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters").max(200),
-  position: z.string().trim().max(60).optional().or(z.literal("")),
+  // Staff role — required for WORKER (enforced in the route), one of CNA / Nurse.
+  position: z.enum(["CNA", "Nurse"]).optional(),
   // Which kind of account to create. MANAGER/CORPORATE require the management code.
   accessType: z.enum(["WORKER", "MANAGER", "CORPORATE"]).default("WORKER"),
   // Required for WORKER and MANAGER (they belong to one facility). Ignored for CORPORATE.
@@ -21,7 +22,7 @@ export const loginSchema = z.object({
 export const createShiftSchema = z
   .object({
     title: z.string().trim().min(1, "Title is required").max(120),
-    position: z.string().trim().min(1, "Position is required").max(60),
+    position: z.enum(["CNA", "Nurse"], { errorMap: () => ({ message: "Choose CNA or Nurse" }) }),
     // The facility the shift belongs to. Corporate must pick one; managers post
     // to their own facility, so the route fills it in when omitted.
     facilityId: z.string().trim().optional().or(z.literal("")),
@@ -57,6 +58,7 @@ export const facilityCreateSchema = z.object({
 export const userUpdateSchema = z.object({
   role: z.enum(["CORPORATE", "MANAGER", "WORKER"]).optional(),
   facilityId: z.string().trim().nullable().optional(),
+  position: z.enum(["CNA", "Nurse"]).nullable().optional(),
   active: z.boolean().optional(),
   // Employee's hourly pay rate, used to compute what they'd earn on a shift.
   baseRate: z.coerce.number().min(0).max(10000).optional(),

@@ -123,10 +123,14 @@ export default async function ShiftsPage({
     );
   }
 
-  // WORKER view — only their facility's open shifts.
+  // WORKER view — only their facility's open shifts, for their role.
   const [openShifts, myClaims] = await Promise.all([
     prisma.shift.findMany({
-      where: { status: "OPEN", ...facilityScopeWhere(user) },
+      where: {
+        status: "OPEN",
+        position: user.position ?? "__no_role__",
+        ...facilityScopeWhere(user),
+      },
       orderBy: { startTime: "asc" },
       include: { facility: { select: { name: true } } },
     }),
@@ -138,7 +142,7 @@ export default async function ShiftsPage({
     <div>
       <PageHeader
         title="Available shifts"
-        subtitle={user.position ? `Open shifts · You're a ${user.position}` : "Open shifts at your facility"}
+        subtitle={user.position ? `Open ${user.position} shifts at your facility` : "Ask your manager to set your role"}
         action={headerAction}
       />
       {openShifts.length === 0 ? (

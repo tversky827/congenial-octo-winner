@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { computePay } from "@/lib/pay";
-import { formatMoney, formatHours } from "@/lib/format";
+import { formatHours } from "@/lib/format";
+import { POSITIONS } from "@/lib/positions";
 
 // Combine a date (YYYY-MM-DD) and a time (HH:MM) into a local Date.
 // If the end time is earlier than the start time, treat it as an overnight shift.
@@ -139,7 +140,12 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label" htmlFor="position">Role needed</label>
-            <input className="input" id="position" required value={form.position} onChange={set("position")} placeholder="CNA" />
+            <select className="input" id="position" required value={form.position} onChange={set("position")}>
+              <option value="" disabled>Choose…</option>
+              {POSITIONS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="label" htmlFor="location">Area / unit (optional)</label>
