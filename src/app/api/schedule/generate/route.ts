@@ -56,22 +56,25 @@ export async function POST(req: Request) {
     postedById: string;
   }[];
 
-  for (const t of template) {
-    for (let i = 0; i < t.count; i++) {
-      const start = combineDayTime(weekStart, t.dayOfWeek, t.startTime);
-      let end = combineDayTime(weekStart, t.dayOfWeek, t.endTime);
-      if (end.getTime() <= start.getTime()) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
-      data.push({
-        title: `${t.position} shift`,
-        position: t.position,
-        facilityId,
-        startTime: start,
-        endTime: end,
-        bonus: t.bonus,
-        status: "PLANNED",
-        scheduleId: schedule.id,
-        postedById: user.id,
-      });
+  // The template is a DAILY budget — apply every entry to all 7 days.
+  for (let day = 0; day < 7; day++) {
+    for (const t of template) {
+      for (let i = 0; i < t.count; i++) {
+        const start = combineDayTime(weekStart, day, t.startTime);
+        let end = combineDayTime(weekStart, day, t.endTime);
+        if (end.getTime() <= start.getTime()) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+        data.push({
+          title: `${t.position} shift`,
+          position: t.position,
+          facilityId,
+          startTime: start,
+          endTime: end,
+          bonus: t.bonus,
+          status: "PLANNED",
+          scheduleId: schedule.id,
+          postedById: user.id,
+        });
+      }
     }
   }
 

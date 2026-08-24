@@ -100,9 +100,10 @@ async function main() {
   if ((await prisma.templateShift.count()) === 0) {
     await prisma.templateShift.createMany({
       data: [
-        { facilityId: sunrise.id, position: "CNA", dayOfWeek: 2, startTime: "07:00", endTime: "15:00", count: 2 },
-        { facilityId: sunrise.id, position: "Nurse", dayOfWeek: 2, startTime: "19:00", endTime: "07:00", count: 1, bonus: 25 },
-        { facilityId: main.id, position: "Nurse", dayOfWeek: 3, startTime: "19:00", endTime: "07:00", count: 2, bonus: 50 },
+        // Daily coverage — applies to every day of the week.
+        { facilityId: sunrise.id, position: "CNA", startTime: "07:00", endTime: "15:00", count: 2 },
+        { facilityId: sunrise.id, position: "Nurse", startTime: "19:00", endTime: "07:00", count: 1, bonus: 25 },
+        { facilityId: main.id, position: "Nurse", startTime: "19:00", endTime: "07:00", count: 2, bonus: 50 },
       ],
     });
   }

@@ -50,16 +50,17 @@ model Facility {
   schedules      Schedule[]
 }
 
-// A recurring weekly staffing requirement for a facility — the "budget" the
-// corporate admin sets. Each row means: this facility needs `count` shifts of
-// `position` on `dayOfWeek` from `startTime`–`endTime`. Weeks are generated from
-// these into PLANNED shifts.
+// A facility's DAILY staffing budget — the coverage the corporate admin sets,
+// applied to every day of the week. Each row means: this facility needs `count`
+// shifts of `position` from `startTime`–`endTime` every day. Building a week
+// generates these into PLANNED shifts for all 7 days.
+// (dayOfWeek is retained but unused — the template is now daily.)
 model TemplateShift {
   id         String   @id @default(cuid())
   facilityId String
   facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   position   String // CNA | Nurse
-  dayOfWeek  Int // 0 = Monday … 6 = Sunday
+  dayOfWeek  Int      @default(0) // unused (template is daily)
   startTime  String // "07:00"
   endTime    String // "15:00"
   count      Int      @default(1)
@@ -67,7 +68,7 @@ model TemplateShift {
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
 
-  @@index([facilityId, dayOfWeek])
+  @@index([facilityId])
 }
 
 // One facility's schedule for one week. Holds the publish state.

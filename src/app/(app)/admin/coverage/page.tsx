@@ -19,7 +19,7 @@ export default async function CoveragePage({
   const entries = facilityId
     ? await prisma.templateShift.findMany({
         where: { facilityId, active: true },
-        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+        orderBy: [{ position: "asc" }, { startTime: "asc" }],
       })
     : [];
 
@@ -34,7 +34,9 @@ export default async function CoveragePage({
   return (
     <div>
       <p className="mb-3 text-sm text-slate-500">
-        Set the shifts each facility needs every week. The scheduler builds each week from this.
+        Set the shifts each facility needs <span className="font-medium">every day</span>. The
+        scheduler builds each week from this and fills it. Only you can add or remove shifts on a
+        specific day.
       </p>
       <div className="mb-4">
         <FacilityFilter facilities={facilities} />

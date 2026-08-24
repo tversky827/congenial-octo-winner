@@ -52,13 +52,22 @@ export const facilityCreateSchema = z.object({
 
 const timeString = z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM");
 
+// Daily coverage entry — applies to every day of the week.
 export const templateShiftSchema = z.object({
   facilityId: z.string().min(1),
   position: z.enum(["CNA", "Nurse"]),
-  dayOfWeek: z.coerce.number().int().min(0).max(6),
   startTime: timeString,
   endTime: timeString,
   count: z.coerce.number().int().min(1).max(50).default(1),
+  bonus: z.coerce.number().min(0).max(100000).default(0),
+});
+
+// Admin day override — add an extra shift to one specific day of a schedule.
+export const addShiftSchema = z.object({
+  dayOffset: z.coerce.number().int().min(0).max(6),
+  position: z.enum(["CNA", "Nurse"]),
+  startTime: timeString,
+  endTime: timeString,
   bonus: z.coerce.number().min(0).max(100000).default(0),
 });
 

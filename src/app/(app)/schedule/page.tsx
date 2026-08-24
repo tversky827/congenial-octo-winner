@@ -64,6 +64,7 @@ export default async function SchedulePage({
     const key = utcDayKey(day);
     return {
       label: DAY_LABELS_LONG[i],
+      dayOffset: i,
       dateLabel: day.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }),
       shifts: shifts
         .filter((s) => utcDayKey(s.startTime) === key)

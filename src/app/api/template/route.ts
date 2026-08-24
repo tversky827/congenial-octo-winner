@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const facilityId = new URL(req.url).searchParams.get("facilityId") || "";
   const entries = await prisma.templateShift.findMany({
     where: { facilityId, active: true },
-    orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+    orderBy: [{ position: "asc" }, { startTime: "asc" }],
   });
   return NextResponse.json({ entries });
 }
@@ -36,7 +36,6 @@ export async function POST(req: Request) {
     data: {
       facilityId: d.facilityId,
       position: d.position,
-      dayOfWeek: d.dayOfWeek,
       startTime: d.startTime,
       endTime: d.endTime,
       count: d.count,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCurrentUser, canManage } from "@/lib/auth";
+import { getCurrentUser, canManage, isCorporate } from "@/lib/auth";
 import { canAccessFacility } from "@/lib/access";
 import { notify } from "@/lib/notify";
 
@@ -69,6 +69,10 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!shift) return NextResponse.json({ error: "Shift not found" }, { status: 404 });
   if (!canAccessFacility(user, shift.facilityId)) {
     return NextResponse.json({ error: "That shift is at a different facility" }, { status: 403 });
+  }
+  // Changing a scheduled day's shifts is admin-only; schedulers just fill them.
+  if (shift.scheduleId && !isCorporate(user)) {
+    return NextResponse.json({ error: "Only corporate can remove a scheduled shift" }, { status: 403 });
   }
 
   // Notify people who had claimed it, before it's gone.

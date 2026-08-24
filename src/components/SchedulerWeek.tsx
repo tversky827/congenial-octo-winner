@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/format";
+import { POSITIONS } from "@/lib/positions";
 import { StatusBadge } from "./StatusBadge";
 
 export interface SchedShift {
@@ -17,6 +18,7 @@ export interface SchedShift {
 
 export interface SchedDay {
   label: string;
+  dayOffset: number;
   dateLabel: string;
   shifts: SchedShift[];
 }
@@ -79,6 +81,20 @@ export function SchedulerWeek(props: Props) {
         body: JSON.stringify({ workerId: workerId || null }),
       })
     );
+
+  const removeShift = (shiftId: string) =>
+    call(`rm-${shiftId}`, () => fetch(`/api/shifts/${shiftId}`, { method: "DELETE" }));
+
+  const addShift = (dayOffset: number, body: Record<string, unknown>) =>
+    props.scheduleId
+      ? call(`add-${dayOffset}`, () =>
+          fetch(`/api/schedule/${props.scheduleId}/add-shift`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dayOffset, ...body }),
+          })
+        )
+      : Promise.resolve();
 
   return (
     <div>
@@ -177,15 +193,83 @@ export function SchedulerWeek(props: Props) {
                             <option key={w.id} value={w.id}>{w.name}</option>
                           ))}
                         </select>
+                        {props.isCorporate && (
+                          <div className="mt-2 text-right">
+                            <button
+                              className="text-xs text-slate-400 hover:text-red-600"
+                              disabled={busy === `rm-${s.id}`}
+                              onClick={() => removeShift(s.id)}
+                            >
+                              Remove this shift
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
+                  {props.isCorporate && (
+                    <AddDayForm
+                      dayOffset={day.dayOffset}
+                      busy={busy === `add-${day.dayOffset}`}
+                      onAdd={(body) => addShift(day.dayOffset, body)}
+                    />
+                  )}
                 </div>
               </section>
             ))}
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// Corporate-only inline form to add an extra shift to a single day.
+function AddDayForm({
+  dayOffset,
+  busy,
+  onAdd,
+}: {
+  dayOffset: number;
+  busy: boolean;
+  onAdd: (body: Record<string, unknown>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ position: "CNA", startTime: "07:00", endTime: "15:00", bonus: "0" });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setF((p) => ({ ...p, [k]: e.target.value }));
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full rounded-xl border border-dashed border-slate-200 py-2 text-xs font-medium text-slate-400 hover:border-brand-300 hover:text-brand-600"
+      >
+        ＋ Add a shift to this day
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-slate-50 p-3">
+      <div className="grid grid-cols-2 gap-2">
+        <select className="input py-2 text-sm" value={f.position} onChange={set("position")}>
+          {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <input className="input py-2 text-sm" type="number" min="0" step="1" value={f.bonus} onChange={set("bonus")} placeholder="Bonus $" />
+        <input className="input py-2 text-sm" type="time" value={f.startTime} onChange={set("startTime")} />
+        <input className="input py-2 text-sm" type="time" value={f.endTime} onChange={set("endTime")} />
+      </div>
+      <div className="mt-2 flex gap-2">
+        <button
+          className="btn-primary flex-1 py-2 text-sm"
+          disabled={busy}
+          onClick={() => { onAdd(f); setOpen(false); }}
+        >
+          {busy ? "Adding…" : "Add shift"}
+        </button>
+        <button className="btn-secondary py-2 text-sm" onClick={() => setOpen(false)}>Cancel</button>
+      </div>
     </div>
   );
 }
