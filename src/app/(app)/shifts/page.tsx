@@ -55,7 +55,13 @@ export default async function ShiftsPage({
 
   const postButton = canManage(user) ? (
     <Link href="/shifts/new" className="btn-primary text-sm">+ Post shift</Link>
-  ) : undefined;
+  ) : null;
+  const headerAction = (
+    <div className="flex items-center gap-2">
+      <Link href="/calendar" className="btn-secondary text-sm">📅 Calendar</Link>
+      {postButton}
+    </div>
+  );
 
   // Corporate gets a facility switcher.
   let facilityFilter: React.ReactNode = null;
@@ -91,7 +97,7 @@ export default async function ShiftsPage({
               ? "Shifts across all facilities that still need filling."
               : "Shifts at your facility that still need filling."
           }
-          action={postButton}
+          action={headerAction}
         />
         {facilityFilter && <div className="mb-4">{facilityFilter}</div>}
         {shifts.length === 0 ? (
@@ -133,6 +139,7 @@ export default async function ShiftsPage({
       <PageHeader
         title="Available shifts"
         subtitle={user.position ? `Open shifts · You're a ${user.position}` : "Open shifts at your facility"}
+        action={headerAction}
       />
       {openShifts.length === 0 ? (
         <EmptyState emoji="🌤️" title="No open shifts right now" body="Check back soon — new shifts appear here as they're posted." />
@@ -143,6 +150,7 @@ export default async function ShiftsPage({
               key={s.id}
               shift={toCardData(s)}
               viewerRole="WORKER"
+              viewerRate={user.baseRate}
               myClaimStatus={claimByShift.get(s.id) ?? null}
             />
           ))}

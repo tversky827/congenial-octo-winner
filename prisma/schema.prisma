@@ -77,8 +77,11 @@ model Shift {
   endTime      DateTime
   // Unpaid break in minutes, subtracted from paid hours.
   breakMinutes Int      @default(0)
-  hourlyRate   Float
-  // Extra per-hour pay on top of hourlyRate (night/weekend differential, incentive, etc.)
+  // Legacy shift-level rate. Pay is now driven by each employee's own rate
+  // (User.baseRate), so this defaults to 0 and is generally unused.
+  hourlyRate   Float    @default(0)
+  // Extra per-hour pay applied on top of the employee's rate (night/weekend
+  // differential, incentive, etc.)
   differential Float    @default(0)
   // Hours worked in a single shift beyond this threshold are paid at overtime.
   overtimeAfterHours Float @default(8)

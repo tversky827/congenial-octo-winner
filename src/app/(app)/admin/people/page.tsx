@@ -17,6 +17,7 @@ export default async function AdminPeoplePage() {
         role: true,
         position: true,
         active: true,
+        baseRate: true,
         facility: { select: { id: true, name: true } },
       },
     }),

@@ -3,7 +3,7 @@ import { getCurrentUser, canManage } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { facilityScopeWhere } from "@/lib/access";
 import { computePay } from "@/lib/pay";
-import { formatDateRange, formatMoney, formatRelativeTime } from "@/lib/format";
+import { formatDateRange, formatHours, formatMoney, formatRelativeTime } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ClaimDecision } from "@/components/ClaimDecision";
 import { CancelShiftButton } from "@/components/CancelShiftButton";
@@ -90,8 +90,8 @@ export default async function ManagePage({
                     <p className="text-sm text-slate-500">🕒 {formatDateRange(shift.startTime, shift.endTime)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-400">Pays</p>
-                    <p className="text-lg font-bold text-brand-700">{formatMoney(pay.total)}</p>
+                    <p className="text-xs text-slate-400">Length</p>
+                    <p className="text-lg font-bold text-slate-700">{formatHours(pay.paidHours)}</p>
                   </div>
                 </div>
 
@@ -99,19 +99,39 @@ export default async function ManagePage({
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                     {shift.claims.length} claimed this shift
                   </p>
-                  {shift.claims.map((claim) => (
-                    <div key={claim.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-800">
-                          {claim.worker.name}
-                          {claim.worker.position ? <span className="text-slate-400"> · {claim.worker.position}</span> : null}
-                        </p>
-                        <p className="text-xs text-slate-400">Claimed {formatRelativeTime(claim.createdAt)}</p>
-                        {claim.message && <p className="mt-0.5 text-xs text-slate-500">“{claim.message}”</p>}
+                  {shift.claims.map((claim) => {
+                    const workerPay = computePay({
+                      startTime: shift.startTime,
+                      endTime: shift.endTime,
+                      hourlyRate: claim.worker.baseRate,
+                      differential: shift.differential,
+                      breakMinutes: shift.breakMinutes,
+                      overtimeAfterHours: shift.overtimeAfterHours,
+                      overtimeMultiplier: shift.overtimeMultiplier,
+                    });
+                    return (
+                      <div key={claim.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-800">
+                            {claim.worker.name}
+                            {claim.worker.position ? <span className="text-slate-400"> · {claim.worker.position}</span> : null}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Claimed {formatRelativeTime(claim.createdAt)} ·{" "}
+                            {claim.worker.baseRate > 0 ? (
+                              <span className="font-medium text-brand-700">
+                                {formatMoney(workerPay.total)} for them
+                              </span>
+                            ) : (
+                              <span className="text-amber-600">rate not set</span>
+                            )}
+                          </p>
+                          {claim.message && <p className="mt-0.5 text-xs text-slate-500">“{claim.message}”</p>}
+                        </div>
+                        <ClaimDecision claimId={claim.id} />
                       </div>
-                      <ClaimDecision claimId={claim.id} />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="mt-3 flex justify-end">

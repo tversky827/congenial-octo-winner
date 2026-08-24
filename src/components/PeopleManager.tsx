@@ -10,6 +10,7 @@ export interface PersonRow {
   role: string;
   position: string | null;
   active: boolean;
+  baseRate: number;
   facility: { id: string; name: string } | null;
 }
 
@@ -105,6 +106,28 @@ export function PeopleManager({
                     ))}
                   </select>
                 </div>
+                {p.role !== "CORPORATE" && (
+                  <div className="col-span-2">
+                    <label className="mb-1 block text-xs text-slate-500">Pay rate ($/hr)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="input py-2 text-sm"
+                      defaultValue={p.baseRate || ""}
+                      placeholder="e.g. 24.00"
+                      disabled={savingId === p.id}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value);
+                        const next = isNaN(val) ? 0 : val;
+                        if (next !== p.baseRate) patch(p.id, { baseRate: next });
+                      }}
+                    />
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      This is what they earn per hour — used to show their pay on each shift.
+                    </p>
+                  </div>
+                )}
                 <div className="col-span-2 flex justify-end">
                   <button
                     className="text-xs font-medium text-slate-400 hover:text-red-600"

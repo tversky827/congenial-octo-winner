@@ -61,7 +61,7 @@ export default async function MyShiftsPage() {
               </h2>
               <div className="space-y-3">
                 {confirmed.map((c) => (
-                  <ShiftCard key={c.id} shift={toCardData(c.shift)} viewerRole="WORKER" myClaimStatus="APPROVED" />
+                  <ShiftCard key={c.id} shift={toCardData(c.shift)} viewerRole="WORKER" viewerRate={user.baseRate} myClaimStatus="APPROVED" />
                 ))}
               </div>
             </section>
@@ -73,7 +73,7 @@ export default async function MyShiftsPage() {
               </h2>
               <div className="space-y-3">
                 {pending.map((c) => (
-                  <ShiftCard key={c.id} shift={toCardData(c.shift)} viewerRole="WORKER" myClaimStatus="PENDING" />
+                  <ShiftCard key={c.id} shift={toCardData(c.shift)} viewerRole="WORKER" viewerRate={user.baseRate} myClaimStatus="PENDING" />
                 ))}
               </div>
             </section>

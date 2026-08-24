@@ -28,7 +28,8 @@ export const createShiftSchema = z
     location: z.string().trim().max(120).optional().or(z.literal("")),
     startTime: z.string().datetime({ offset: true }).or(z.string().min(1)),
     endTime: z.string().datetime({ offset: true }).or(z.string().min(1)),
-    hourlyRate: z.coerce.number().min(0).max(10000),
+    // Pay is driven by each employee's own rate; a shift only carries optional
+    // extras (a differential, overtime rules), so no base $ amount is required.
     differential: z.coerce.number().min(0).max(10000).default(0),
     breakMinutes: z.coerce.number().int().min(0).max(600).default(0),
     overtimeAfterHours: z.coerce.number().min(0).max(24).default(8),
@@ -57,6 +58,8 @@ export const userUpdateSchema = z.object({
   role: z.enum(["CORPORATE", "MANAGER", "WORKER"]).optional(),
   facilityId: z.string().trim().nullable().optional(),
   active: z.boolean().optional(),
+  // Employee's hourly pay rate, used to compute what they'd earn on a shift.
+  baseRate: z.coerce.number().min(0).max(10000).optional(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

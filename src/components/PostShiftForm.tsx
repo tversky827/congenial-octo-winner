@@ -37,7 +37,6 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
     date: "",
     start: "",
     end: "",
-    hourlyRate: "",
     differential: "0",
     breakMinutes: "0",
     overtimeAfterHours: "8",
@@ -52,13 +51,12 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
 
   const preview = useMemo(() => {
     const times = buildTimes(form.date, form.start, form.end);
-    const rate = parseFloat(form.hourlyRate);
-    if (!times || isNaN(rate)) return null;
+    if (!times) return null;
+    // Rate is per-employee, so the preview only needs the hours/OT breakdown.
     return computePay({
       startTime: times.startISO,
       endTime: times.endISO,
-      hourlyRate: rate,
-      differential: parseFloat(form.differential) || 0,
+      hourlyRate: 0,
       breakMinutes: parseInt(form.breakMinutes) || 0,
       overtimeAfterHours: parseFloat(form.overtimeAfterHours) || 8,
       overtimeMultiplier: parseFloat(form.overtimeMultiplier) || 1.5,
@@ -89,7 +87,6 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
           location: form.location,
           startTime: times.startISO,
           endTime: times.endISO,
-          hourlyRate: form.hourlyRate,
           differential: form.differential,
           breakMinutes: form.breakMinutes,
           overtimeAfterHours: form.overtimeAfterHours,
@@ -166,19 +163,19 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
       </div>
 
       <div className="card space-y-3">
+        <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
+          💡 No pay amount needed — each employee sees their own pay based on the rate set for
+          them. You can add an extra differential or a break below if this shift has them.
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label" htmlFor="hourlyRate">Hourly rate ($)</label>
-            <input className="input" id="hourlyRate" type="number" min="0" step="0.01" required value={form.hourlyRate} onChange={set("hourlyRate")} placeholder="24.00" />
+            <label className="label" htmlFor="differential">Extra differential ($/hr)</label>
+            <input className="input" id="differential" type="number" min="0" step="0.01" value={form.differential} onChange={set("differential")} placeholder="0" />
           </div>
           <div>
-            <label className="label" htmlFor="differential">Differential ($/hr)</label>
-            <input className="input" id="differential" type="number" min="0" step="0.01" value={form.differential} onChange={set("differential")} />
+            <label className="label" htmlFor="breakMinutes">Unpaid break (min)</label>
+            <input className="input" id="breakMinutes" type="number" min="0" step="5" value={form.breakMinutes} onChange={set("breakMinutes")} />
           </div>
-        </div>
-        <div>
-          <label className="label" htmlFor="breakMinutes">Unpaid break (minutes)</label>
-          <input className="input" id="breakMinutes" type="number" min="0" step="5" value={form.breakMinutes} onChange={set("breakMinutes")} />
         </div>
 
         <button type="button" className="text-sm font-medium text-brand-600" onClick={() => setShowAdvanced((v) => !v)}>
@@ -205,11 +202,12 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
 
       {preview && (
         <div className="rounded-2xl bg-brand-50 p-4 ring-1 ring-brand-100">
-          <p className="text-sm text-brand-800">Your team will see</p>
-          <p className="text-2xl font-bold text-brand-700">{formatMoney(preview.total)}</p>
+          <p className="text-sm text-brand-800">This shift is</p>
+          <p className="text-2xl font-bold text-brand-700">{formatHours(preview.paidHours)}</p>
           <p className="text-sm text-brand-800/80">
-            for {formatHours(preview.paidHours)} of work
-            {preview.overtimeHours > 0 && ` (incl. ${formatHours(preview.overtimeHours)} OT)`}
+            of paid time{preview.overtimeHours > 0 && ` (incl. ${formatHours(preview.overtimeHours)} OT)`}. Each
+            employee sees their own pay from their rate
+            {form.differential && parseFloat(form.differential) > 0 ? ` + $${form.differential}/hr differential` : ""}.
           </p>
         </div>
       )}

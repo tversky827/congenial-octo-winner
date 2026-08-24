@@ -48,7 +48,6 @@ export async function POST(req: Request) {
       location: d.location || null,
       startTime: new Date(d.startTime),
       endTime: new Date(d.endTime),
-      hourlyRate: d.hourlyRate,
       differential: d.differential,
       breakMinutes: d.breakMinutes,
       overtimeAfterHours: d.overtimeAfterHours,

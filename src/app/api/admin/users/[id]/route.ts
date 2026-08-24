@@ -48,6 +48,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       role,
       facilityId,
       ...(parsed.data.active !== undefined ? { active: parsed.data.active } : {}),
+      ...(parsed.data.baseRate !== undefined ? { baseRate: parsed.data.baseRate } : {}),
     },
   });
   return NextResponse.json({ id: updated.id, role: updated.role, facilityId: updated.facilityId });

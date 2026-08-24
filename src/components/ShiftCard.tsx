@@ -26,22 +26,30 @@ export interface ShiftCardData {
 interface Props {
   shift: ShiftCardData;
   viewerRole: "CORPORATE" | "MANAGER" | "WORKER";
+  /** The viewing staff member's hourly rate (drives their personal pay estimate). */
+  viewerRate?: number | null;
   myClaimStatus?: string | null;
   claimCount?: number;
   /** Show worker claim/withdraw controls. */
   showActions?: boolean;
 }
 
-export function ShiftCard({ shift, viewerRole, myClaimStatus, claimCount = 0, showActions = true }: Props) {
+export function ShiftCard({ shift, viewerRole, viewerRate, myClaimStatus, claimCount = 0, showActions = true }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
+  const isStaff = viewerRole === "WORKER";
+  const rate = isStaff ? viewerRate ?? 0 : 0;
+  const hasRate = rate > 0;
+
+  // Pay is computed from the viewing employee's own rate. For managers/corporate
+  // (no single rate) we only use this for the hours figure.
   const pay = computePay({
     startTime: shift.startTime,
     endTime: shift.endTime,
-    hourlyRate: shift.hourlyRate,
+    hourlyRate: rate,
     differential: shift.differential,
     breakMinutes: shift.breakMinutes,
     overtimeAfterHours: shift.overtimeAfterHours,
@@ -94,9 +102,25 @@ export function ShiftCard({ shift, viewerRole, myClaimStatus, claimCount = 0, sh
           {shift.location && <p className="mt-0.5 text-sm text-slate-500">📍 {shift.location}</p>}
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-xs text-slate-400">You&apos;d earn</p>
-          <p className="text-xl font-bold text-brand-700">{formatMoney(pay.total)}</p>
-          <p className="text-xs text-slate-400">{formatRate(pay.effectiveRate)}</p>
+          {isStaff && hasRate ? (
+            <>
+              <p className="text-xs text-slate-400">You&apos;d earn</p>
+              <p className="text-xl font-bold text-brand-700">{formatMoney(pay.total)}</p>
+              <p className="text-xs text-slate-400">{formatRate(pay.effectiveRate)}</p>
+            </>
+          ) : isStaff ? (
+            <>
+              <p className="text-xs text-slate-400">Your pay</p>
+              <p className="text-sm font-semibold text-amber-600">Rate not set</p>
+              <p className="text-xs text-slate-400">Ask your manager</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-slate-400">Length</p>
+              <p className="text-xl font-bold text-slate-700">{formatHours(pay.paidHours)}</p>
+              <p className="text-xs text-slate-400">pay per staff rate</p>
+            </>
+          )}
         </div>
       </div>
 
@@ -105,13 +129,15 @@ export function ShiftCard({ shift, viewerRole, myClaimStatus, claimCount = 0, sh
         <span className="font-medium">{formatHours(pay.paidHours)}</span>
       </div>
 
-      <button
-        onClick={() => setShowBreakdown((v) => !v)}
-        className="mt-2 text-xs font-medium text-brand-600 hover:underline"
-      >
-        {showBreakdown ? "Hide pay details" : "See pay details"}
-      </button>
-      {showBreakdown && (
+      {isStaff && hasRate && (
+        <button
+          onClick={() => setShowBreakdown((v) => !v)}
+          className="mt-2 text-xs font-medium text-brand-600 hover:underline"
+        >
+          {showBreakdown ? "Hide pay details" : "See pay details"}
+        </button>
+      )}
+      {isStaff && hasRate && showBreakdown && (
         <dl className="mt-2 space-y-1 rounded-xl border border-slate-100 p-3 text-sm">
           <Row label={`Regular (${formatHours(pay.regularHours)} × ${formatMoney(pay.effectiveRate)})`} value={formatMoney(pay.regularPay)} />
           {pay.overtimeHours > 0 && (
