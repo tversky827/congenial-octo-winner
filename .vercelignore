@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+*.db
+*.db-journal
+prisma/dev.db
+prisma/schema.production.prisma
+*.log
+.env
+.env*.local
