@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCurrentUser, isManager } from "@/lib/auth";
+import { getCurrentUser, canManage } from "@/lib/auth";
+import { canAccessFacility } from "@/lib/access";
 import { notify } from "@/lib/notify";
 
-// Cancel a shift (manager only). Notifies anyone with an active claim.
+// Cancel a shift (scheduler only). Notifies anyone with an active claim.
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  if (!isManager(user)) {
-    return NextResponse.json({ error: "Only managers can change shifts" }, { status: 403 });
+  if (!canManage(user)) {
+    return NextResponse.json({ error: "Only schedulers can change shifts" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -19,6 +20,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     include: { claims: { where: { status: { in: ["PENDING", "APPROVED"] } } } },
   });
   if (!shift) return NextResponse.json({ error: "Shift not found" }, { status: 404 });
+  if (!canAccessFacility(user, shift.facilityId)) {
+    return NextResponse.json({ error: "That shift is at a different facility" }, { status: 403 });
+  }
 
   if (action === "cancel") {
     await prisma.$transaction([

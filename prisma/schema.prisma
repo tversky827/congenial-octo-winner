@@ -5,9 +5,16 @@
 // Note: SQLite doesn't support native enums, so status/role fields are stored as
 // strings. Their allowed values are enforced in the application layer (see
 // src/lib/validation.ts and the route handlers):
-//   Role         : "MANAGER" | "WORKER"
+//   Role         : "CORPORATE" | "MANAGER" | "WORKER"
 //   ShiftStatus  : "OPEN" | "FILLED" | "COMPLETED" | "CANCELLED"
 //   ClaimStatus  : "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN"
+//
+// Multi-facility model:
+//   - CORPORATE users oversee every facility (facilityId is null).
+//   - MANAGER (facility scheduler) and WORKER users belong to exactly one
+//     facility (facilityId set). This is enforced in the app, so the column is
+//     nullable at the DB level to keep migrations non-destructive.
+//   - Every Shift belongs to a facility (again enforced in the app).
 
 generator client {
   provider = "prisma-client-js"
@@ -21,12 +28,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Facility {
+  id        String   @id @default(cuid())
+  name      String
+  // Optional address / description shown to staff.
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  users  User[]
+  shifts Shift[]
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
   name         String
   role         String   @default("WORKER")
+  // The facility this person belongs to. Null for CORPORATE (sees all).
+  facilityId   String?
+  facility     Facility? @relation(fields: [facilityId], references: [id])
   // Position/title, e.g. "RN", "CNA", "Caregiver". Used to match shifts to staff.
   position     String?
   // Default hourly pay. A shift can override this, but it's a sensible fallback.
@@ -38,13 +60,19 @@ model User {
   postedShifts  Shift[]        @relation("PostedBy")
   claims        Claim[]
   notifications Notification[]
+
+  @@index([facilityId])
 }
 
 model Shift {
   id           String   @id @default(cuid())
   title        String
   position     String // role required, e.g. "CNA"
-  location     String
+  // The facility this shift belongs to (which board it shows on).
+  facilityId   String?
+  facility     Facility? @relation(fields: [facilityId], references: [id])
+  // Optional finer location within the facility, e.g. "2nd Floor / Unit B".
+  location     String?
   startTime    DateTime
   endTime      DateTime
   // Unpaid break in minutes, subtracted from paid hours.
@@ -66,7 +94,7 @@ model Shift {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status, startTime])
+  @@index([facilityId, status, startTime])
 }
 
 model Claim {

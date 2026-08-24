@@ -3,7 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function TopBar({ name, role }: { name: string; role: "MANAGER" | "WORKER" }) {
+const ROLE_LABEL: Record<string, string> = {
+  CORPORATE: "Corporate",
+  MANAGER: "Scheduler",
+  WORKER: "Team member",
+};
+
+export function TopBar({
+  name,
+  role,
+  facilityLabel,
+}: {
+  name: string;
+  role: "CORPORATE" | "MANAGER" | "WORKER";
+  facilityLabel: string;
+}) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const firstName = name.split(" ")[0];
@@ -24,7 +38,9 @@ export function TopBar({ name, role }: { name: string; role: "MANAGER" | "WORKER
         </div>
         <div className="leading-tight">
           <p className="text-sm font-semibold text-slate-900">Hi, {firstName}</p>
-          <p className="text-xs text-slate-500">{role === "MANAGER" ? "Scheduler" : "Team member"}</p>
+          <p className="text-xs text-slate-500">
+            {ROLE_LABEL[role] ?? role} · {facilityLabel}
+          </p>
         </div>
       </div>
 

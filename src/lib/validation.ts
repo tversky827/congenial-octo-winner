@@ -5,7 +5,12 @@ export const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters").max(200),
   position: z.string().trim().max(60).optional().or(z.literal("")),
-  managerInviteCode: z.string().optional(),
+  // Which kind of account to create. MANAGER/CORPORATE require the management code.
+  accessType: z.enum(["WORKER", "MANAGER", "CORPORATE"]).default("WORKER"),
+  // Required for WORKER and MANAGER (they belong to one facility). Ignored for CORPORATE.
+  facilityId: z.string().trim().optional().or(z.literal("")),
+  // Unlocks MANAGER / CORPORATE sign-up.
+  managementCode: z.string().optional(),
 });
 
 export const loginSchema = z.object({
@@ -17,7 +22,10 @@ export const createShiftSchema = z
   .object({
     title: z.string().trim().min(1, "Title is required").max(120),
     position: z.string().trim().min(1, "Position is required").max(60),
-    location: z.string().trim().min(1, "Location is required").max(120),
+    // The facility the shift belongs to. Corporate must pick one; managers post
+    // to their own facility, so the route fills it in when omitted.
+    facilityId: z.string().trim().optional().or(z.literal("")),
+    location: z.string().trim().max(120).optional().or(z.literal("")),
     startTime: z.string().datetime({ offset: true }).or(z.string().min(1)),
     endTime: z.string().datetime({ offset: true }).or(z.string().min(1)),
     hourlyRate: z.coerce.number().min(0).max(10000),
@@ -38,6 +46,17 @@ export const claimSchema = z.object({
 
 export const decideClaimSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
+});
+
+export const facilityCreateSchema = z.object({
+  name: z.string().trim().min(1, "Facility name is required").max(120),
+  address: z.string().trim().max(200).optional().or(z.literal("")),
+});
+
+export const userUpdateSchema = z.object({
+  role: z.enum(["CORPORATE", "MANAGER", "WORKER"]).optional(),
+  facilityId: z.string().trim().nullable().optional(),
+  active: z.boolean().optional(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

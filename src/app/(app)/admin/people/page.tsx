@@ -1,0 +1,38 @@
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { PeopleManager } from "@/components/PeopleManager";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminPeoplePage() {
+  const me = (await getCurrentUser())!;
+
+  const [people, facilities] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: [{ role: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        position: true,
+        active: true,
+        facility: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.facility.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
+
+  return (
+    <div>
+      <p className="mb-3 text-sm text-slate-500">
+        {people.length} {people.length === 1 ? "person" : "people"} · change anyone&apos;s access or facility.
+      </p>
+      <PeopleManager people={people} facilities={facilities} currentUserId={me.id} />
+    </div>
+  );
+}

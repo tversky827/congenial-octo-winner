@@ -10,7 +10,8 @@ export interface ShiftCardData {
   id: string;
   title: string;
   position: string;
-  location: string;
+  facilityName?: string | null;
+  location: string | null;
   startTime: string;
   endTime: string;
   breakMinutes: number;
@@ -24,7 +25,7 @@ export interface ShiftCardData {
 
 interface Props {
   shift: ShiftCardData;
-  viewerRole: "MANAGER" | "WORKER";
+  viewerRole: "CORPORATE" | "MANAGER" | "WORKER";
   myClaimStatus?: string | null;
   claimCount?: number;
   /** Show worker claim/withdraw controls. */
@@ -84,10 +85,13 @@ export function ShiftCard({ shift, viewerRole, myClaimStatus, claimCount = 0, sh
         <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <span className="chip bg-brand-50 text-brand-700">{shift.position}</span>
+            {shift.facilityName && (
+              <span className="chip bg-slate-100 text-slate-600">🏢 {shift.facilityName}</span>
+            )}
             <StatusBadge status={shift.status} />
           </div>
           <h3 className="truncate text-base font-semibold text-slate-900">{shift.title}</h3>
-          <p className="mt-0.5 text-sm text-slate-500">📍 {shift.location}</p>
+          {shift.location && <p className="mt-0.5 text-sm text-slate-500">📍 {shift.location}</p>}
         </div>
         <div className="shrink-0 text-right">
           <p className="text-xs text-slate-400">You&apos;d earn</p>
@@ -159,8 +163,8 @@ export function ShiftCard({ shift, viewerRole, myClaimStatus, claimCount = 0, sh
         </div>
       )}
 
-      {/* Manager summary */}
-      {viewerRole === "MANAGER" && (
+      {/* Manager / corporate summary */}
+      {viewerRole !== "WORKER" && (
         <div className="mt-3 text-sm text-slate-500">
           {claimCount > 0 ? (
             <span className="font-medium text-brand-700">

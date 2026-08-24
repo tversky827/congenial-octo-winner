@@ -17,7 +17,13 @@ function buildTimes(date: string, start: string, end: string): { startISO: strin
   return { startISO: startDate.toISOString(), endISO: endDate.toISOString() };
 }
 
-export function PostShiftForm() {
+interface PostShiftFormProps {
+  isCorporate: boolean;
+  facilities: { id: string; name: string }[];
+  facilityName: string | null;
+}
+
+export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShiftFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,6 +32,7 @@ export function PostShiftForm() {
   const [form, setForm] = useState({
     title: "",
     position: "",
+    facilityId: "",
     location: "",
     date: "",
     start: "",
@@ -38,8 +45,10 @@ export function PostShiftForm() {
     notes: "",
   });
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set =
+    (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const preview = useMemo(() => {
     const times = buildTimes(form.date, form.start, form.end);
@@ -64,6 +73,10 @@ export function PostShiftForm() {
       setError("Please set a date, start time, and end time.");
       return;
     }
+    if (isCorporate && !form.facilityId) {
+      setError("Please choose a facility for this shift.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/shifts", {
@@ -72,6 +85,7 @@ export function PostShiftForm() {
         body: JSON.stringify({
           title: form.title,
           position: form.position,
+          facilityId: form.facilityId,
           location: form.location,
           startTime: times.startISO,
           endTime: times.endISO,
@@ -100,6 +114,27 @@ export function PostShiftForm() {
   return (
     <form onSubmit={submit} className="space-y-4 pb-4">
       <div className="card space-y-3">
+        {isCorporate ? (
+          <div>
+            <label className="label" htmlFor="facilityId">Facility</label>
+            {facilities.length === 0 ? (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                No facilities yet. Add one in Admin → Facilities first.
+              </p>
+            ) : (
+              <select className="input" id="facilityId" required value={form.facilityId} onChange={set("facilityId")}>
+                <option value="" disabled>Choose a facility…</option>
+                {facilities.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            Posting to <span className="font-semibold text-slate-800">{facilityName ?? "your facility"}</span>
+          </div>
+        )}
         <div>
           <label className="label" htmlFor="title">Shift title</label>
           <input className="input" id="title" required value={form.title} onChange={set("title")} placeholder="e.g. Day shift — Memory Care" />
@@ -110,8 +145,8 @@ export function PostShiftForm() {
             <input className="input" id="position" required value={form.position} onChange={set("position")} placeholder="CNA" />
           </div>
           <div>
-            <label className="label" htmlFor="location">Location</label>
-            <input className="input" id="location" required value={form.location} onChange={set("location")} placeholder="Sunrise House" />
+            <label className="label" htmlFor="location">Area / unit (optional)</label>
+            <input className="input" id="location" value={form.location} onChange={set("location")} placeholder="2nd Floor" />
           </div>
         </div>
         <div>

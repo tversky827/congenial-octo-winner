@@ -1,16 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 type Mode = "login" | "register";
+type Access = "WORKER" | "MANAGER" | "CORPORATE";
 
 export function AuthForm() {
-  const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
-  const [showManagerField, setShowManagerField] = useState(false);
+  const [access, setAccess] = useState<Access>("WORKER");
+  const [facilities, setFacilities] = useState<{ id: string; name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Load facilities so employees/schedulers can pick theirs at sign-up.
+  useEffect(() => {
+    fetch("/api/facilities")
+      .then((r) => r.json())
+      .then((d) => setFacilities(d.facilities ?? []))
+      .catch(() => {});
+  }, []);
+
+  const needsFacility = access === "WORKER" || access === "MANAGER";
+  const needsCode = access === "MANAGER" || access === "CORPORATE";
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -18,6 +29,7 @@ export function AuthForm() {
     setLoading(true);
     const form = new FormData(e.currentTarget);
     const payload = Object.fromEntries(form.entries());
+    if (mode === "register") payload.accessType = access;
 
     try {
       const res = await fetch(`/api/auth/${mode}`, {
@@ -31,8 +43,7 @@ export function AuthForm() {
         setLoading(false);
         return;
       }
-      // Full navigation so server components re-read the new session cookie.
-      window.location.href = "/shifts";
+      window.location.href = data.role === "WORKER" ? "/shifts" : "/shifts";
     } catch {
       setError("Network error — please try again");
       setLoading(false);
@@ -85,22 +96,59 @@ export function AuthForm() {
         {mode === "register" && (
           <>
             <div>
+              <label className="label">I am a…</label>
+              <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+                {([
+                  ["WORKER", "Employee"],
+                  ["MANAGER", "Scheduler"],
+                  ["CORPORATE", "Corporate"],
+                ] as [Access, string][]).map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => { setAccess(val); setError(null); }}
+                    className={`rounded-lg py-2 transition ${access === val ? "bg-brand-600 text-white" : "text-slate-600"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <label className="label" htmlFor="position">Your role (optional)</label>
               <input className="input" id="position" name="position" placeholder="e.g. CNA, RN, Caregiver" />
             </div>
-            {showManagerField ? (
+
+            {needsFacility && (
               <div>
-                <label className="label" htmlFor="managerInviteCode">Manager invite code</label>
-                <input className="input" id="managerInviteCode" name="managerInviteCode" placeholder="Provided by your admin" />
+                <label className="label" htmlFor="facilityId">Facility</label>
+                {facilities.length === 0 ? (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    No facilities yet. Ask your corporate admin to add yours, or sign up as
+                    Corporate to create them.
+                  </p>
+                ) : (
+                  <select className="input" id="facilityId" name="facilityId" required={needsFacility} defaultValue="">
+                    <option value="" disabled>Choose your facility…</option>
+                    {facilities.map((f) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowManagerField(true)}
-                className="text-sm font-medium text-brand-600 hover:underline"
-              >
-                I&apos;m a manager / scheduler
-              </button>
+            )}
+
+            {needsCode && (
+              <div>
+                <label className="label" htmlFor="managementCode">Management code</label>
+                <input className="input" id="managementCode" name="managementCode" placeholder="Provided by your admin" />
+                <p className="mt-1 text-xs text-slate-400">
+                  {access === "CORPORATE"
+                    ? "Corporate accounts oversee every facility."
+                    : "Schedulers post & approve shifts for their facility."}
+                </p>
+              </div>
             )}
           </>
         )}

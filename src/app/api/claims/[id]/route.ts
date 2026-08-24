@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCurrentUser, isManager } from "@/lib/auth";
+import { getCurrentUser, canManage } from "@/lib/auth";
+import { canAccessFacility } from "@/lib/access";
 import { notify } from "@/lib/notify";
 import { decideClaimSchema } from "@/lib/validation";
 
@@ -8,8 +9,8 @@ import { decideClaimSchema } from "@/lib/validation";
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  if (!isManager(user)) {
-    return NextResponse.json({ error: "Only managers can decide claims" }, { status: 403 });
+  if (!canManage(user)) {
+    return NextResponse.json({ error: "Only schedulers can decide claims" }, { status: 403 });
   }
 
   const json = await req.json().catch(() => null);
@@ -23,6 +24,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     include: { shift: true, worker: true },
   });
   if (!claim) return NextResponse.json({ error: "Claim not found" }, { status: 404 });
+  if (!canAccessFacility(user, claim.shift.facilityId)) {
+    return NextResponse.json({ error: "That shift is at a different facility" }, { status: 403 });
+  }
 
   if (parsed.data.decision === "REJECTED") {
     await prisma.claim.update({

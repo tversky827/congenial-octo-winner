@@ -10,7 +10,10 @@ no App Store required.
 
 ## Features
 
-- 📋 **Post & claim shifts** — managers post shifts (role, location, date/time, pay);
+- 🏢 **Multiple facilities** — each site has its own shift board. Staff and
+  schedulers belong to one facility; **corporate** oversees them all with a
+  facility filter, and manages sites & access from an in-app Admin area.
+- 📋 **Post & claim shifts** — schedulers post shifts (role, location, date/time, pay);
   staff browse and claim them.
 - 💰 **Automatic pay calculation** — every shift shows the total a worker would earn,
   including differentials and overtime, with a tap-to-expand breakdown.
@@ -51,20 +54,25 @@ Open http://localhost:3000.
 
 ### Demo logins (from the seed script)
 
-| Role    | Email                        | Password      |
-| ------- | ---------------------------- | ------------- |
-| Manager | `manager@goldwatercare.com`  | `password123` |
-| Worker  | `jordan@goldwatercare.com`   | `password123` |
-| Worker  | `sam@goldwatercare.com`      | `password123` |
-| Worker  | `casey@goldwatercare.com`    | `password123` |
+| Access                | Email                                 | Sees            |
+| --------------------- | ------------------------------------- | --------------- |
+| Corporate (all sites) | `corporate@goldwatercare.com`         | Every facility  |
+| Scheduler (Sunrise)   | `sunrise.manager@goldwatercare.com`   | Sunrise House   |
+| Scheduler (Main)      | `main.manager@goldwatercare.com`      | Goldwater Main  |
+| Staff (Sunrise)       | `jordan@goldwatercare.com`            | Sunrise House   |
+| Staff (Main)          | `sam@goldwatercare.com`               | Goldwater Main  |
 
-> Change these immediately for any real use.
+Password for all: `password123`. Change these immediately for any real use.
 
-### Creating your own accounts
+### Roles & how accounts are created
 
-- **Workers** self-register from the login screen — no code needed.
-- **Managers** register with the **manager invite code** (set as `MANAGER_INVITE_CODE`
-  in `.env`; defaults to `goldwater-managers`). Share that code only with schedulers.
+- **Staff** self-register and pick their facility from a dropdown — no code needed.
+- **Schedulers** and **Corporate** register with the **management code** (set as
+  `MANAGER_INVITE_CODE` in `.env`) and choose their access type at sign-up. A
+  scheduler also picks the one facility they run.
+- **Corporate** creates facilities and manages everyone's access from
+  **Admin → Facilities / People**. Corporate can promote a staffer to scheduler,
+  move someone between facilities, or deactivate an account.
 
 ## How pay is calculated
 

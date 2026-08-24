@@ -7,11 +7,12 @@ import type { Shift } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-function toCardData(shift: Shift): ShiftCardData {
+function toCardData(shift: Shift & { facility: { name: string } | null }): ShiftCardData {
   return {
     id: shift.id,
     title: shift.title,
     position: shift.position,
+    facilityName: shift.facility?.name ?? null,
     location: shift.location,
     startTime: shift.startTime.toISOString(),
     endTime: shift.endTime.toISOString(),
@@ -28,11 +29,11 @@ function toCardData(shift: Shift): ShiftCardData {
 export default async function MyShiftsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.role === "MANAGER") redirect("/manage");
+  if (user.role !== "WORKER") redirect("/shifts");
 
   const claims = await prisma.claim.findMany({
     where: { workerId: user.id, status: { in: ["PENDING", "APPROVED"] } },
-    include: { shift: true },
+    include: { shift: { include: { facility: { select: { name: true } } } } },
     orderBy: { shift: { startTime: "asc" } },
   });
 

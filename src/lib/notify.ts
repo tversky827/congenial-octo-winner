@@ -14,15 +14,27 @@ export async function notify({ userId, title, body, link }: NotifyArgs): Promise
   });
 }
 
-/** Notify every manager (used when a worker claims a shift). */
-export async function notifyManagers(args: Omit<NotifyArgs, "userId">): Promise<void> {
-  const managers = await prisma.user.findMany({
-    where: { role: "MANAGER", active: true },
+/**
+ * Notify the people who can act on a facility's shift: that facility's
+ * scheduler(s) plus all corporate admins. Used when a worker claims/withdraws.
+ */
+export async function notifyFacilityManagers(
+  facilityId: string | null,
+  args: Omit<NotifyArgs, "userId">
+): Promise<void> {
+  const recipients = await prisma.user.findMany({
+    where: {
+      active: true,
+      OR: [
+        { role: "CORPORATE" },
+        ...(facilityId ? [{ role: "MANAGER", facilityId }] : []),
+      ],
+    },
     select: { id: true },
   });
-  if (managers.length === 0) return;
+  if (recipients.length === 0) return;
   await prisma.notification.createMany({
-    data: managers.map((m) => ({
+    data: recipients.map((m) => ({
       userId: m.id,
       title: args.title,
       body: args.body,

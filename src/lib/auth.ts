@@ -5,8 +5,11 @@ import { prisma } from "./db";
 import type { User } from "@prisma/client";
 
 // SQLite has no native enums, so role is a string on the model. This union keeps
-// the rest of the app type-safe about the two valid values.
-export type Role = "MANAGER" | "WORKER";
+// the rest of the app type-safe about the valid values.
+//   CORPORATE — oversight across every facility
+//   MANAGER   — scheduler for a single facility
+//   WORKER    — staff member at a single facility
+export type Role = "CORPORATE" | "MANAGER" | "WORKER";
 
 const COOKIE_NAME = "sb_session";
 const SESSION_DAYS = 30;
@@ -76,6 +79,16 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
+export function isCorporate(user: Pick<User, "role"> | null): boolean {
+  return user?.role === "CORPORATE";
+}
+
+/** Facility scheduler for a single site. */
 export function isManager(user: Pick<User, "role"> | null): boolean {
   return user?.role === "MANAGER";
+}
+
+/** Anyone who can post shifts and approve claims (corporate or a facility manager). */
+export function canManage(user: Pick<User, "role"> | null): boolean {
+  return user?.role === "CORPORATE" || user?.role === "MANAGER";
 }

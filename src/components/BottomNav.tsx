@@ -19,10 +19,11 @@ const ICONS = {
   post: "M12 5v14M5 12h14",
   mine: "M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m-9 0h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z",
   approvals: "M9 12l2 2 4-4m-7 8h6a4 4 0 0 0 4-4V8a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v6a4 4 0 0 0 4 4Z",
+  admin: "M4 20V9l8-5 8 5v11M4 20h16M9 20v-6h6v6M9 9h.01M15 9h.01",
   alerts: "M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9",
 };
 
-export function BottomNav({ role }: { role: "MANAGER" | "WORKER" }) {
+export function BottomNav({ role }: { role: "CORPORATE" | "MANAGER" | "WORKER" }) {
   const pathname = usePathname();
   const [unread, setUnread] = useState(0);
 
@@ -50,25 +51,37 @@ export function BottomNav({ role }: { role: "MANAGER" | "WORKER" }) {
     };
   }, [pathname]);
 
-  const items: Item[] =
-    role === "MANAGER"
-      ? [
-          { href: "/shifts", label: "Shifts", icon: <Icon path={ICONS.shifts} /> },
-          { href: "/shifts/new", label: "Post", icon: <Icon path={ICONS.post} /> },
-          { href: "/manage", label: "Approvals", icon: <Icon path={ICONS.approvals} /> },
-          { href: "/notifications", label: "Alerts", icon: <Icon path={ICONS.alerts} />, badge: true },
-        ]
-      : [
-          { href: "/shifts", label: "Shifts", icon: <Icon path={ICONS.shifts} /> },
-          { href: "/my-shifts", label: "My Shifts", icon: <Icon path={ICONS.mine} /> },
-          { href: "/notifications", label: "Alerts", icon: <Icon path={ICONS.alerts} />, badge: true },
-        ];
+  let items: Item[];
+  if (role === "CORPORATE") {
+    items = [
+      { href: "/shifts", label: "Shifts", icon: <Icon path={ICONS.shifts} /> },
+      { href: "/manage", label: "Approvals", icon: <Icon path={ICONS.approvals} /> },
+      { href: "/admin/facilities", label: "Admin", icon: <Icon path={ICONS.admin} /> },
+      { href: "/notifications", label: "Alerts", icon: <Icon path={ICONS.alerts} />, badge: true },
+    ];
+  } else if (role === "MANAGER") {
+    items = [
+      { href: "/shifts", label: "Shifts", icon: <Icon path={ICONS.shifts} /> },
+      { href: "/manage", label: "Approvals", icon: <Icon path={ICONS.approvals} /> },
+      { href: "/notifications", label: "Alerts", icon: <Icon path={ICONS.alerts} />, badge: true },
+    ];
+  } else {
+    items = [
+      { href: "/shifts", label: "Shifts", icon: <Icon path={ICONS.shifts} /> },
+      { href: "/my-shifts", label: "My Shifts", icon: <Icon path={ICONS.mine} /> },
+      { href: "/notifications", label: "Alerts", icon: <Icon path={ICONS.alerts} />, badge: true },
+    ];
+  }
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
       <div className="mx-auto flex max-w-2xl items-stretch justify-around">
         {items.map((item) => {
-          const active = pathname === item.href || (item.href !== "/shifts" && pathname.startsWith(item.href));
+          const matchPrefix = item.href.startsWith("/admin") ? "/admin" : item.href;
+          const active =
+            item.href === "/shifts"
+              ? pathname === "/shifts"
+              : pathname === item.href || pathname.startsWith(matchPrefix);
           return (
             <Link
               key={item.href}

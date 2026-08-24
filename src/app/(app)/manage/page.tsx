@@ -1,24 +1,37 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser, isManager } from "@/lib/auth";
+import { getCurrentUser, canManage } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { facilityScopeWhere } from "@/lib/access";
 import { computePay } from "@/lib/pay";
 import { formatDateRange, formatMoney, formatRelativeTime } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ClaimDecision } from "@/components/ClaimDecision";
 import { CancelShiftButton } from "@/components/CancelShiftButton";
+import { FacilityFilter } from "@/components/FacilityFilter";
 import { PageHeader, EmptyState } from "@/components/Page";
 
 export const dynamic = "force-dynamic";
 
-export default async function ManagePage() {
+export default async function ManagePage({
+  searchParams,
+}: {
+  searchParams: { facility?: string };
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!isManager(user)) redirect("/shifts");
+  if (!canManage(user)) redirect("/shifts");
+
+  const selectedFacility = user.role === "CORPORATE" ? searchParams.facility || null : null;
 
   const shifts = await prisma.shift.findMany({
-    where: { status: "OPEN", claims: { some: { status: "PENDING" } } },
+    where: {
+      status: "OPEN",
+      claims: { some: { status: "PENDING" } },
+      ...facilityScopeWhere(user, selectedFacility),
+    },
     orderBy: { startTime: "asc" },
     include: {
+      facility: { select: { name: true } },
       claims: {
         where: { status: "PENDING" },
         orderBy: { createdAt: "asc" },
@@ -29,12 +42,23 @@ export default async function ManagePage() {
 
   const pendingCount = shifts.reduce((n, s) => n + s.claims.length, 0);
 
+  let facilityFilter: React.ReactNode = null;
+  if (user.role === "CORPORATE") {
+    const facilities = await prisma.facility.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+    facilityFilter = <FacilityFilter facilities={facilities} />;
+  }
+
   return (
     <div>
       <PageHeader
         title="Approvals"
         subtitle={pendingCount > 0 ? `${pendingCount} claim${pendingCount === 1 ? "" : "s"} waiting on you` : "Review and assign claimed shifts."}
       />
+      {facilityFilter && <div className="mb-4">{facilityFilter}</div>}
 
       {shifts.length === 0 ? (
         <EmptyState emoji="✅" title="You're all caught up" body="No claims are waiting for approval right now." />
@@ -54,12 +78,15 @@ export default async function ManagePage() {
               <div key={shift.id} className="card">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="mb-1 flex items-center gap-2">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
                       <span className="chip bg-brand-50 text-brand-700">{shift.position}</span>
+                      {shift.facility && (
+                        <span className="chip bg-slate-100 text-slate-600">🏢 {shift.facility.name}</span>
+                      )}
                       <StatusBadge status={shift.status} />
                     </div>
                     <h3 className="text-base font-semibold text-slate-900">{shift.title}</h3>
-                    <p className="text-sm text-slate-500">📍 {shift.location}</p>
+                    {shift.location && <p className="text-sm text-slate-500">📍 {shift.location}</p>}
                     <p className="text-sm text-slate-500">🕒 {formatDateRange(shift.startTime, shift.endTime)}</p>
                   </div>
                   <div className="text-right">

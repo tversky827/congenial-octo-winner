@@ -12,15 +12,26 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const { name, email, password, position, managerInviteCode } = parsed.data;
+  const { name, email, password, position, accessType, facilityId, managementCode } = parsed.data;
 
-  // Decide role: a valid invite code makes this a MANAGER account.
-  let role: "MANAGER" | "WORKER" = "WORKER";
-  if (managerInviteCode && managerInviteCode.trim().length > 0) {
-    if (managerInviteCode.trim() !== process.env.MANAGER_INVITE_CODE) {
-      return NextResponse.json({ error: "Invalid manager invite code" }, { status: 400 });
+  // MANAGER and CORPORATE accounts require the management code.
+  if (accessType === "MANAGER" || accessType === "CORPORATE") {
+    if (!managementCode || managementCode.trim() !== process.env.MANAGER_INVITE_CODE) {
+      return NextResponse.json({ error: "Invalid management code" }, { status: 400 });
     }
-    role = "MANAGER";
+  }
+
+  // WORKER and MANAGER must belong to a real facility.
+  let resolvedFacilityId: string | null = null;
+  if (accessType === "WORKER" || accessType === "MANAGER") {
+    if (!facilityId) {
+      return NextResponse.json({ error: "Please choose your facility" }, { status: 400 });
+    }
+    const facility = await prisma.facility.findFirst({ where: { id: facilityId, active: true } });
+    if (!facility) {
+      return NextResponse.json({ error: "That facility no longer exists" }, { status: 400 });
+    }
+    resolvedFacilityId = facility.id;
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -37,7 +48,8 @@ export async function POST(req: Request) {
       email,
       passwordHash: await hashPassword(password),
       position: position || null,
-      role,
+      role: accessType,
+      facilityId: resolvedFacilityId,
     },
   });
 

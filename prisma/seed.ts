@@ -16,33 +16,84 @@ function at(dayOffset: number, hour: number, minute = 0): Date {
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
-  const manager = await prisma.user.upsert({
-    where: { email: "manager@goldwatercare.com" },
+  // Facilities (each has its own shift board).
+  const sunrise = await prisma.facility.upsert({
+    where: { id: "seed-sunrise" },
+    update: {},
+    create: { id: "seed-sunrise", name: "Sunrise House", address: "120 Elm St" },
+  });
+  const main = await prisma.facility.upsert({
+    where: { id: "seed-main" },
+    update: {},
+    create: { id: "seed-main", name: "Goldwater Main", address: "500 Center Ave" },
+  });
+
+  // Corporate oversight account (sees all facilities).
+  const corporate = await prisma.user.upsert({
+    where: { email: "corporate@goldwatercare.com" },
     update: {},
     create: {
-      email: "manager@goldwatercare.com",
-      name: "Alex (Manager)",
+      email: "corporate@goldwatercare.com",
+      name: "Corporate Admin",
+      role: "CORPORATE",
+      passwordHash,
+    },
+  });
+
+  // A facility scheduler for each site.
+  await prisma.user.upsert({
+    where: { email: "sunrise.manager@goldwatercare.com" },
+    update: {},
+    create: {
+      email: "sunrise.manager@goldwatercare.com",
+      name: "Morgan (Sunrise)",
       role: "MANAGER",
+      facilityId: sunrise.id,
+      position: "Scheduler",
+      passwordHash,
+    },
+  });
+  await prisma.user.upsert({
+    where: { email: "main.manager@goldwatercare.com" },
+    update: {},
+    create: {
+      email: "main.manager@goldwatercare.com",
+      name: "Alex (Main)",
+      role: "MANAGER",
+      facilityId: main.id,
       position: "Scheduler",
       passwordHash,
     },
   });
 
-  const workers = await Promise.all(
-    [
-      { email: "jordan@goldwatercare.com", name: "Jordan Lee", position: "CNA", baseRate: 22 },
-      { email: "sam@goldwatercare.com", name: "Sam Rivera", position: "RN", baseRate: 40 },
-      { email: "casey@goldwatercare.com", name: "Casey Nguyen", position: "Caregiver", baseRate: 18 },
-    ].map((w) =>
-      prisma.user.upsert({
-        where: { email: w.email },
-        update: {},
-        create: { ...w, role: "WORKER", passwordHash },
-      })
-    )
-  );
+  // Staff, each tied to one facility.
+  await prisma.user.upsert({
+    where: { email: "jordan@goldwatercare.com" },
+    update: {},
+    create: {
+      email: "jordan@goldwatercare.com",
+      name: "Jordan Lee",
+      role: "WORKER",
+      facilityId: sunrise.id,
+      position: "CNA",
+      baseRate: 22,
+      passwordHash,
+    },
+  });
+  await prisma.user.upsert({
+    where: { email: "sam@goldwatercare.com" },
+    update: {},
+    create: {
+      email: "sam@goldwatercare.com",
+      name: "Sam Rivera",
+      role: "WORKER",
+      facilityId: main.id,
+      position: "RN",
+      baseRate: 40,
+      passwordHash,
+    },
+  });
 
-  // Only seed sample shifts if none exist yet, so re-running seed doesn't pile them up.
   const existingShifts = await prisma.shift.count();
   if (existingShifts === 0) {
     await prisma.shift.createMany({
@@ -50,38 +101,38 @@ async function main() {
         {
           title: "Day shift — Memory Care",
           position: "CNA",
-          location: "Sunrise House, 2nd Floor",
+          facilityId: sunrise.id,
+          location: "2nd Floor",
           startTime: at(1, 7),
           endTime: at(1, 15),
           hourlyRate: 24,
-          differential: 0,
           breakMinutes: 30,
           notes: "Familiarity with dementia care preferred.",
-          postedById: manager.id,
+          postedById: corporate.id,
+        },
+        {
+          title: "Weekend companion care",
+          position: "Caregiver",
+          facilityId: sunrise.id,
+          location: "Cottage B",
+          startTime: at(3, 9),
+          endTime: at(3, 14),
+          hourlyRate: 20,
+          differential: 2,
+          postedById: corporate.id,
         },
         {
           title: "Night shift — Skilled Nursing",
           position: "RN",
-          location: "Goldwater Main, Unit B",
+          facilityId: main.id,
+          location: "Unit B",
           startTime: at(1, 19),
           endTime: at(2, 7),
           hourlyRate: 42,
           differential: 6,
           breakMinutes: 30,
           notes: "Night differential included. 12-hour shift.",
-          postedById: manager.id,
-        },
-        {
-          title: "Weekend companion care",
-          position: "Caregiver",
-          location: "Client home — Elm St",
-          startTime: at(3, 9),
-          endTime: at(3, 14),
-          hourlyRate: 20,
-          differential: 2,
-          breakMinutes: 0,
-          notes: "Light housekeeping and meal prep.",
-          postedById: manager.id,
+          postedById: corporate.id,
         },
       ],
     });
@@ -89,9 +140,12 @@ async function main() {
 
   console.log("Seed complete.");
   console.log("--------------------------------------------------");
-  console.log("Manager login:  manager@goldwatercare.com");
-  console.log(`Worker logins:  ${workers.map((w) => w.email).join(", ")}`);
-  console.log(`Password (all): ${DEMO_PASSWORD}`);
+  console.log("Corporate (sees all):   corporate@goldwatercare.com");
+  console.log("Sunrise scheduler:      sunrise.manager@goldwatercare.com");
+  console.log("Main scheduler:         main.manager@goldwatercare.com");
+  console.log("Staff (Sunrise):        jordan@goldwatercare.com");
+  console.log("Staff (Main):           sam@goldwatercare.com");
+  console.log(`Password (all):         ${DEMO_PASSWORD}`);
   console.log("--------------------------------------------------");
 }
 
