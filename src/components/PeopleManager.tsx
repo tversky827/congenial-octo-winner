@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { TIER_META, type ReliabilityTier, type AttendanceCounts } from "@/lib/reliability";
 
 export interface PersonRow {
   id: string;
@@ -17,6 +18,7 @@ export interface PersonRow {
   hireDate: string | null; // YYYY-MM-DD
   notes: string | null;
   facility: { id: string; name: string } | null;
+  reliability: { score: number | null; tier: ReliabilityTier; counts: AttendanceCounts } | null;
 }
 
 const EMPLOYMENT_LABEL: Record<string, string> = {
@@ -84,7 +86,15 @@ export function PeopleManager({
                 <p className="truncate text-xs text-slate-500">{p.email}</p>
                 {p.position && <p className="text-xs text-slate-400">{p.position}</p>}
               </div>
-              <span className="chip bg-brand-50 text-brand-700">{ROLE_LABEL[p.role] ?? p.role}</span>
+              <div className="flex flex-col items-end gap-1">
+                <span className="chip bg-brand-50 text-brand-700">{ROLE_LABEL[p.role] ?? p.role}</span>
+                {p.role === "WORKER" && p.reliability && (
+                  <span className={`chip ${TIER_META[p.reliability.tier].tone}`}>
+                    {TIER_META[p.reliability.tier].label}
+                    {p.reliability.score !== null && ` · ${p.reliability.score}`}
+                  </span>
+                )}
+              </div>
             </div>
 
             {isSelf ? (
@@ -170,7 +180,16 @@ export function PeopleManager({
                 </div>
 
                 {openProfile === p.id && (
-                  <ProfileEditor person={p} saving={savingId === p.id} onSave={(body) => patch(p.id, body)} />
+                  <>
+                    {p.role === "WORKER" && p.reliability && (
+                      <div className="col-span-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        <span className="font-semibold">Attendance:</span>{" "}
+                        {p.reliability.counts.completed} worked · {p.reliability.counts.noShows} no-show ·{" "}
+                        {p.reliability.counts.callOffs} call-off · {p.reliability.counts.lates} late
+                      </div>
+                    )}
+                    <ProfileEditor person={p} saving={savingId === p.id} onSave={(body) => patch(p.id, body)} />
+                  </>
                 )}
 
                 <div className="col-span-2 flex justify-end">
