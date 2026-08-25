@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { weekStartOf, combineDayTime } from "../src/lib/week";
+import { DEFAULT_FACILITY_BUDGET, budgetToRows, facilitySlug } from "../src/lib/defaultCoverage";
 
 const prisma = new PrismaClient();
 
@@ -131,6 +132,27 @@ async function main() {
       passwordHash,
     },
   });
+
+  // Real facilities with their budgeted daily coverage (CNA & Nurse).
+  for (const budget of DEFAULT_FACILITY_BUDGET) {
+    const facility = await prisma.facility.upsert({
+      where: { id: `seed-${facilitySlug(budget.facility)}` },
+      update: { organizationId: org.id },
+      create: { id: `seed-${facilitySlug(budget.facility)}`, name: budget.facility, organizationId: org.id },
+    });
+    for (const row of budgetToRows(budget)) {
+      const existing = await prisma.templateShift.findFirst({
+        where: { facilityId: facility.id, position: row.position, startTime: row.startTime, endTime: row.endTime },
+      });
+      if (existing) {
+        if (existing.count !== row.count) {
+          await prisma.templateShift.update({ where: { id: existing.id }, data: { count: row.count, active: true } });
+        }
+      } else {
+        await prisma.templateShift.create({ data: { facilityId: facility.id, ...row } });
+      }
+    }
+  }
 
   // Staffing template (the weekly "budget" of coverage per facility).
   if ((await prisma.templateShift.count()) === 0) {

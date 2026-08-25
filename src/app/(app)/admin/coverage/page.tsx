@@ -4,6 +4,7 @@ import { orgWhere } from "@/lib/tenant";
 import { orgPositionNamesOrDefault } from "@/lib/positionsServer";
 import { FacilityFilter } from "@/components/FacilityFilter";
 import { TemplateEditor } from "@/components/TemplateEditor";
+import { ImportCoverageButton } from "@/components/ImportCoverageButton";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +30,18 @@ export default async function CoveragePage({
 
   if (facilities.length === 0) {
     return (
-      <p className="mt-6 text-center text-sm text-slate-500">
-        Add a facility first (Facilities tab), then set its weekly coverage here.
-      </p>
+      <div>
+        <ImportCoverageButton />
+        <p className="mt-2 text-center text-sm text-slate-500">
+          Or add facilities manually in the Facilities tab, then set coverage here.
+        </p>
+      </div>
     );
   }
 
   return (
     <div>
+      <ImportCoverageButton />
       <p className="mb-3 text-sm text-slate-500">
         Set the shifts each facility needs <span className="font-medium">every day</span>. The
         scheduler builds each week from this and fills it. Only you can add or remove shifts on a
