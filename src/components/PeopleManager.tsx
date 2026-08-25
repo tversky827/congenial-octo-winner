@@ -11,8 +11,19 @@ export interface PersonRow {
   position: string | null;
   active: boolean;
   baseRate: number;
+  phone: string | null;
+  employeeId: string | null;
+  employmentType: string | null;
+  hireDate: string | null; // YYYY-MM-DD
+  notes: string | null;
   facility: { id: string; name: string } | null;
 }
+
+const EMPLOYMENT_LABEL: Record<string, string> = {
+  FULL_TIME: "Full-time",
+  PART_TIME: "Part-time",
+  PER_DIEM: "Per diem",
+};
 
 const ROLE_LABEL: Record<string, string> = {
   CORPORATE: "Corporate",
@@ -34,6 +45,7 @@ export function PeopleManager({
   const router = useRouter();
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [openProfile, setOpenProfile] = useState<string | null>(null);
 
   async function patch(id: string, body: Record<string, unknown>) {
     setSavingId(id);
@@ -147,6 +159,20 @@ export function PeopleManager({
                     </p>
                   </div>
                 )}
+                <div className="col-span-2">
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                    onClick={() => setOpenProfile((cur) => (cur === p.id ? null : p.id))}
+                  >
+                    {openProfile === p.id ? "Hide profile ▲" : "Employment profile ▾"}
+                  </button>
+                </div>
+
+                {openProfile === p.id && (
+                  <ProfileEditor person={p} saving={savingId === p.id} onSave={(body) => patch(p.id, body)} />
+                )}
+
                 <div className="col-span-2 flex justify-end">
                   <button
                     className="text-xs font-medium text-slate-400 hover:text-red-600"
@@ -161,6 +187,68 @@ export function PeopleManager({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Expandable HR profile: contact + employment details for one person.
+function ProfileEditor({
+  person,
+  saving,
+  onSave,
+}: {
+  person: PersonRow;
+  saving: boolean;
+  onSave: (body: Record<string, unknown>) => void;
+}) {
+  const [form, setForm] = useState({
+    phone: person.phone ?? "",
+    employeeId: person.employeeId ?? "",
+    employmentType: person.employmentType ?? "PER_DIEM",
+    hireDate: person.hireDate ?? "",
+    notes: person.notes ?? "",
+  });
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  return (
+    <div className="col-span-2 space-y-2 rounded-xl bg-slate-50 p-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">Phone</label>
+          <input className="input py-2 text-sm" type="tel" value={form.phone} onChange={set("phone")} placeholder="(555) 123-4567" disabled={saving} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">Employee ID</label>
+          <input className="input py-2 text-sm" value={form.employeeId} onChange={set("employeeId")} placeholder="HR / payroll #" disabled={saving} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">Employment type</label>
+          <select className="input py-2 text-sm" value={form.employmentType} onChange={set("employmentType")} disabled={saving}>
+            {Object.entries(EMPLOYMENT_LABEL).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">Hire date</label>
+          <input className="input py-2 text-sm" type="date" value={form.hireDate} onChange={set("hireDate")} disabled={saving} />
+        </div>
+      </div>
+      <div>
+        <label className="mb-1 block text-xs text-slate-500">Internal notes</label>
+        <textarea className="input py-2 text-sm" rows={2} value={form.notes} onChange={set("notes")} placeholder="Visible to schedulers & admins only." disabled={saving} />
+      </div>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className="btn-primary py-2 text-sm"
+          disabled={saving}
+          onClick={() => onSave(form)}
+        >
+          {saving ? "Saving…" : "Save profile"}
+        </button>
+      </div>
     </div>
   );
 }

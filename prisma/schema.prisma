@@ -160,6 +160,14 @@ model User {
   // Default hourly pay. A shift can override this, but it's a sensible fallback.
   baseRate     Float    @default(0)
   phone        String?
+  // --- Employment profile (HR-facing, optional) ---
+  // External HR/payroll identifier for this person.
+  employeeId   String?
+  // FULL_TIME | PART_TIME | PER_DIEM — drives scheduling & benefits rules later.
+  employmentType String? @default("PER_DIEM")
+  hireDate     DateTime?
+  // Free-form internal notes visible only to schedulers/admins.
+  notes        String?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 

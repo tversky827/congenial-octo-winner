@@ -54,6 +54,23 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   }
 
+  // Normalize the optional hire date: "" clears it, YYYY-MM-DD or ISO parses.
+  let hireDate: Date | null | undefined;
+  if (parsed.data.hireDate !== undefined) {
+    const raw = parsed.data.hireDate;
+    if (!raw) {
+      hireDate = null;
+    } else {
+      const d = new Date(raw.length === 10 ? `${raw}T00:00:00Z` : raw);
+      if (isNaN(d.getTime())) {
+        return NextResponse.json({ error: "Enter a valid hire date" }, { status: 400 });
+      }
+      hireDate = d;
+    }
+  }
+  const emptyToNull = (v: string | null | undefined) =>
+    v === undefined ? undefined : v === "" ? null : v;
+
   const updated = await prisma.user.update({
     where: { id: target.id },
     data: {
@@ -62,6 +79,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(parsed.data.active !== undefined ? { active: parsed.data.active } : {}),
       ...(parsed.data.baseRate !== undefined ? { baseRate: parsed.data.baseRate } : {}),
       ...(parsed.data.position !== undefined ? { position: parsed.data.position } : {}),
+      ...(parsed.data.phone !== undefined ? { phone: emptyToNull(parsed.data.phone) } : {}),
+      ...(parsed.data.employeeId !== undefined ? { employeeId: emptyToNull(parsed.data.employeeId) } : {}),
+      ...(parsed.data.employmentType !== undefined ? { employmentType: parsed.data.employmentType } : {}),
+      ...(hireDate !== undefined ? { hireDate } : {}),
+      ...(parsed.data.notes !== undefined ? { notes: emptyToNull(parsed.data.notes) } : {}),
     },
   });
 

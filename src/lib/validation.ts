@@ -92,6 +92,8 @@ export const assignShiftSchema = z.object({
   workerId: z.string().nullable().optional(),
 });
 
+export const employmentTypes = ["FULL_TIME", "PART_TIME", "PER_DIEM"] as const;
+
 export const userUpdateSchema = z.object({
   role: z.enum(["CORPORATE", "MANAGER", "WORKER"]).optional(),
   facilityId: z.string().trim().nullable().optional(),
@@ -99,6 +101,13 @@ export const userUpdateSchema = z.object({
   active: z.boolean().optional(),
   // Employee's hourly pay rate, used to compute what they'd earn on a shift.
   baseRate: z.coerce.number().min(0).max(10000).optional(),
+  // --- Employment profile ---
+  phone: z.string().trim().max(40).nullable().optional().or(z.literal("")),
+  employeeId: z.string().trim().max(60).nullable().optional().or(z.literal("")),
+  employmentType: z.enum(employmentTypes).nullable().optional(),
+  // Accepts an ISO date or a plain YYYY-MM-DD (from an <input type=date>).
+  hireDate: z.string().trim().nullable().optional().or(z.literal("")),
+  notes: z.string().trim().max(2000).nullable().optional().or(z.literal("")),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

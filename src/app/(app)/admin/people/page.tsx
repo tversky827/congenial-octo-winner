@@ -21,6 +21,11 @@ export default async function AdminPeoplePage() {
         position: true,
         active: true,
         baseRate: true,
+        phone: true,
+        employeeId: true,
+        employmentType: true,
+        hireDate: true,
+        notes: true,
         facility: { select: { id: true, name: true } },
       },
     }),
@@ -33,12 +38,18 @@ export default async function AdminPeoplePage() {
 
   const positions = await orgPositionNamesOrDefault(me.organizationId);
 
+  // Serialize dates to YYYY-MM-DD for the client date inputs.
+  const rows = people.map((p) => ({
+    ...p,
+    hireDate: p.hireDate ? p.hireDate.toISOString().slice(0, 10) : null,
+  }));
+
   return (
     <div>
       <p className="mb-3 text-sm text-slate-500">
         {people.length} {people.length === 1 ? "person" : "people"} · change anyone&apos;s access or facility.
       </p>
-      <PeopleManager people={people} facilities={facilities} currentUserId={me.id} positions={positions} />
+      <PeopleManager people={rows} facilities={facilities} currentUserId={me.id} positions={positions} />
     </div>
   );
 }
