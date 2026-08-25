@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser, isCorporate } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { DEFAULT_FACILITY_BUDGET, budgetToRows } from "@/lib/defaultCoverage";
+import { buildWeekFromTemplate } from "@/lib/scheduleBuild";
+import { weekStartOf } from "@/lib/week";
 
 // One-click load of the budgeted daily coverage for every facility. Idempotent:
 // creates any missing facility, then ensures each budgeted shift exists with the
@@ -22,6 +24,10 @@ export async function POST() {
   let facilitiesCreated = 0;
   let shiftsCreated = 0;
   let shiftsUpdated = 0;
+  let schedulesBuilt = 0;
+  let scheduledShifts = 0;
+
+  const weekStart = weekStartOf(new Date());
 
   for (const budget of DEFAULT_FACILITY_BUDGET) {
     let facility = await prisma.facility.findFirst({
@@ -64,12 +70,20 @@ export async function POST() {
         shiftsCreated++;
       }
     }
+
+    // Build this week's schedule from the template so a populated "default"
+    // schedule is visible immediately. Idempotent — skips a week already built.
+    const build = await buildWeekFromTemplate(facility.id, weekStart, user.id);
+    if (build.created > 0) {
+      schedulesBuilt++;
+      scheduledShifts += build.created;
+    }
   }
 
   await audit({
     actorId: user.id, actorName: user.name, organizationId,
     action: "coverage.import_defaults", entityType: "Organization", entityId: organizationId,
-    after: { facilitiesCreated, shiftsCreated, shiftsUpdated },
+    after: { facilitiesCreated, shiftsCreated, shiftsUpdated, schedulesBuilt, scheduledShifts },
   });
 
   return NextResponse.json({
@@ -78,5 +92,7 @@ export async function POST() {
     facilitiesCreated,
     shiftsCreated,
     shiftsUpdated,
+    schedulesBuilt,
+    scheduledShifts,
   });
 }

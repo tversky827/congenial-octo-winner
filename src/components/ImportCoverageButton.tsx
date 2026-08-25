@@ -24,10 +24,10 @@ export function ImportCoverageButton() {
       const parts = [
         `${data.facilities} facilities`,
         data.facilitiesCreated ? `${data.facilitiesCreated} created` : null,
-        data.shiftsCreated ? `${data.shiftsCreated} shifts added` : null,
-        data.shiftsUpdated ? `${data.shiftsUpdated} updated` : null,
+        data.shiftsCreated ? `${data.shiftsCreated} template shifts` : null,
+        data.schedulesBuilt ? `${data.schedulesBuilt} schedules built (${data.scheduledShifts} shifts)` : null,
       ].filter(Boolean);
-      setResult(`Loaded budgeted coverage — ${parts.join(" · ")}.`);
+      setResult(`Done — ${parts.join(" · ")}. Open Schedule to see this week.`);
       router.refresh();
     } catch {
       setError("Network error");
@@ -38,13 +38,13 @@ export function ImportCoverageButton() {
 
   return (
     <div className="mb-4 rounded-2xl bg-brand-50 p-4 ring-1 ring-brand-100">
-      <p className="text-sm font-semibold text-brand-800">Load budgeted coverage</p>
+      <p className="text-sm font-semibold text-brand-800">Load budgeted coverage &amp; build schedules</p>
       <p className="mt-1 text-xs text-brand-800/80">
-        Creates all facilities and their default daily shifts (CNA &amp; Nurse) from the budget.
-        Safe to run more than once — it updates rather than duplicates.
+        Creates all facilities, their default daily shifts (CNA &amp; Nurse), and builds this
+        week&apos;s schedule for each. Safe to run more than once — it updates rather than duplicates.
       </p>
       <button className="btn-primary mt-3 w-full" onClick={run} disabled={busy}>
-        {busy ? "Loading…" : "Load budgeted coverage"}
+        {busy ? "Loading…" : "Load coverage & build schedules"}
       </button>
       {result && <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{result}</p>}
       {error && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}

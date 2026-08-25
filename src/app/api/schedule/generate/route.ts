@@ -5,7 +5,8 @@ import { canAccessFacility } from "@/lib/access";
 import { sameOrg } from "@/lib/tenant";
 import { audit } from "@/lib/audit";
 import { generateWeekSchema } from "@/lib/validation";
-import { parseWeekStart, combineDayTime } from "@/lib/week";
+import { parseWeekStart } from "@/lib/week";
+import { buildWeekFromTemplate } from "@/lib/scheduleBuild";
 
 // Build a week's draft (PLANNED) shifts for a facility from its staffing template.
 // Idempotent-ish: won't duplicate if the week already has shifts.
@@ -28,67 +29,21 @@ export async function POST(req: Request) {
   }
   const weekStart = parseWeekStart(parsed.data.weekStart);
 
-  // Find or create the schedule for this facility + week.
-  const schedule = await prisma.schedule.upsert({
-    where: { facilityId_weekStart: { facilityId, weekStart } },
-    update: {},
-    create: { facilityId, weekStart },
-  });
-
-  const existingCount = await prisma.shift.count({ where: { scheduleId: schedule.id } });
-  if (existingCount > 0) {
-    return NextResponse.json({ scheduleId: schedule.id, created: 0, message: "Week already built" });
-  }
-
-  const template = await prisma.templateShift.findMany({
-    where: { facilityId, active: true },
-  });
-  if (template.length === 0) {
+  const result = await buildWeekFromTemplate(facilityId, weekStart, user.id);
+  if (result.noTemplate) {
     return NextResponse.json(
       { error: "No staffing template for this facility yet. Add one in Admin → Coverage." },
       { status: 400 }
     );
   }
-
-  const data = [] as {
-    title: string;
-    position: string;
-    facilityId: string;
-    startTime: Date;
-    endTime: Date;
-    bonus: number;
-    status: string;
-    scheduleId: string;
-    postedById: string;
-  }[];
-
-  // The template is a DAILY budget — apply every entry to all 7 days.
-  for (let day = 0; day < 7; day++) {
-    for (const t of template) {
-      for (let i = 0; i < t.count; i++) {
-        const start = combineDayTime(weekStart, day, t.startTime);
-        let end = combineDayTime(weekStart, day, t.endTime);
-        if (end.getTime() <= start.getTime()) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
-        data.push({
-          title: `${t.position} shift`,
-          position: t.position,
-          facilityId,
-          startTime: start,
-          endTime: end,
-          bonus: t.bonus,
-          status: "PLANNED",
-          scheduleId: schedule.id,
-          postedById: user.id,
-        });
-      }
-    }
+  if (result.alreadyBuilt) {
+    return NextResponse.json({ scheduleId: result.scheduleId, created: 0, message: "Week already built" });
   }
 
-  await prisma.shift.createMany({ data });
   await audit({
     actorId: user.id, actorName: user.name, organizationId: user.organizationId,
-    action: "schedule.generate", entityType: "Schedule", entityId: schedule.id,
-    after: { facilityId, created: data.length },
+    action: "schedule.generate", entityType: "Schedule", entityId: result.scheduleId,
+    after: { facilityId, created: result.created },
   });
-  return NextResponse.json({ scheduleId: schedule.id, created: data.length });
+  return NextResponse.json({ scheduleId: result.scheduleId, created: result.created });
 }

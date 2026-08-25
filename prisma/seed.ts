@@ -133,7 +133,9 @@ async function main() {
     },
   });
 
-  // Real facilities with their budgeted daily coverage (CNA & Nurse).
+  // Real facilities with their budgeted daily coverage (CNA & Nurse), plus this
+  // week's schedule pre-built from that budget so they show as default schedules.
+  const currentWeekStart = weekStartOf(new Date());
   for (const budget of DEFAULT_FACILITY_BUDGET) {
     const facility = await prisma.facility.upsert({
       where: { id: `seed-${facilitySlug(budget.facility)}` },
@@ -151,6 +153,30 @@ async function main() {
       } else {
         await prisma.templateShift.create({ data: { facilityId: facility.id, ...row } });
       }
+    }
+
+    // Build the current week's PLANNED shifts (once).
+    const schedule = await prisma.schedule.upsert({
+      where: { facilityId_weekStart: { facilityId: facility.id, weekStart: currentWeekStart } },
+      update: {},
+      create: { facilityId: facility.id, weekStart: currentWeekStart },
+    });
+    if ((await prisma.shift.count({ where: { scheduleId: schedule.id } })) === 0) {
+      const shiftData = [];
+      for (let day = 0; day < 7; day++) {
+        for (const row of budgetToRows(budget)) {
+          for (let i = 0; i < row.count; i++) {
+            const startTime = combineDayTime(currentWeekStart, day, row.startTime);
+            let endTime = combineDayTime(currentWeekStart, day, row.endTime);
+            if (endTime.getTime() <= startTime.getTime()) endTime = new Date(endTime.getTime() + 86400000);
+            shiftData.push({
+              title: `${row.position} shift`, position: row.position, facilityId: facility.id,
+              startTime, endTime, status: "PLANNED", scheduleId: schedule.id, postedById: corporate.id,
+            });
+          }
+        }
+      }
+      await prisma.shift.createMany({ data: shiftData });
     }
   }
 
