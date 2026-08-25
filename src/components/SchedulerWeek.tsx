@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/format";
+import { projectWeekly, minutesToHours, OT_FLAG_META } from "@/lib/overtime";
 import { StatusBadge } from "./StatusBadge";
 
 export interface SchedShift {
@@ -35,7 +36,7 @@ interface Props {
   published: boolean;
   built: boolean;
   days: SchedDay[];
-  staff: { id: string; name: string; position: string }[];
+  staff: { id: string; name: string; position: string; weeklyMinutes: number }[];
   counts: { total: number; assigned: number; unfilled: number; open: number };
   positions: string[];
 }
@@ -170,6 +171,8 @@ export function SchedulerWeek(props: Props) {
                 <div className="space-y-2">
                   {day.shifts.map((s) => {
                     const options = props.staff.filter((w) => w.position === s.position);
+                    const assignedWorker = props.staff.find((w) => w.id === s.assignedToId);
+                    const assignedProj = assignedWorker ? projectWeekly(assignedWorker.weeklyMinutes) : null;
                     return (
                       <div key={s.id} className="card">
                         <div className="mb-2 flex items-center justify-between gap-2">
@@ -189,10 +192,21 @@ export function SchedulerWeek(props: Props) {
                           <option value="">
                             {props.published ? "Unassigned (in marketplace)" : "Unassigned"}
                           </option>
-                          {options.map((w) => (
-                            <option key={w.id} value={w.id}>{w.name}</option>
-                          ))}
+                          {options.map((w) => {
+                            const h = minutesToHours(w.weeklyMinutes);
+                            return (
+                              <option key={w.id} value={w.id}>
+                                {w.name} · {h}h this week
+                              </option>
+                            );
+                          })}
                         </select>
+                        {assignedProj && assignedProj.flag !== "ok" && (
+                          <p className={`mt-1 text-xs font-medium ${OT_FLAG_META[assignedProj.flag].tone}`}>
+                            ⚠ {assignedWorker!.name}: {assignedProj.totalHours}h this week
+                            {assignedProj.overtimeHours > 0 ? ` (${assignedProj.overtimeHours}h over 40)` : " — approaching overtime"}
+                          </p>
+                        )}
                         {props.isCorporate && (
                           <div className="mt-2 text-right">
                             <button

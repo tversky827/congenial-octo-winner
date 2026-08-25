@@ -87,6 +87,25 @@ export default async function SchedulePage({
     select: { id: true, name: true, position: true },
   });
 
+  // Weekly assigned minutes per staff member (for overtime awareness in the
+  // assign dropdown). Counts shifts they're on across this facility's week.
+  const weekEnd = addDays(weekStart, 7);
+  const assignedShifts = await prisma.shift.findMany({
+    where: {
+      facilityId,
+      assignedToId: { in: staff.map((s) => s.id) },
+      status: { in: ["ASSIGNED", "FILLED", "COMPLETED"] },
+      startTime: { gte: weekStart, lt: weekEnd },
+    },
+    select: { assignedToId: true, startTime: true, endTime: true },
+  });
+  const minutesByWorker = new Map<string, number>();
+  for (const s of assignedShifts) {
+    if (!s.assignedToId) continue;
+    const mins = Math.max(0, Math.round((s.endTime.getTime() - s.startTime.getTime()) / 60000));
+    minutesByWorker.set(s.assignedToId, (minutesByWorker.get(s.assignedToId) ?? 0) + mins);
+  }
+
   const positions = await orgPositionNamesOrDefault(user.organizationId);
 
   const assigned = shifts.filter((s) => s.assignedToId).length;
@@ -114,7 +133,12 @@ export default async function SchedulePage({
         published={schedule?.published ?? false}
         built={built}
         days={days}
-        staff={staff.map((s) => ({ id: s.id, name: s.name, position: s.position ?? "" }))}
+        staff={staff.map((s) => ({
+          id: s.id,
+          name: s.name,
+          position: s.position ?? "",
+          weeklyMinutes: minutesByWorker.get(s.id) ?? 0,
+        }))}
         counts={counts}
         positions={positions}
       />
