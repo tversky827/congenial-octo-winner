@@ -22,6 +22,7 @@ const ICONS = {
   approvals: "M9 12l2 2 4-4m-7 8h6a4 4 0 0 0 4-4V8a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v6a4 4 0 0 0 4 4Z",
   admin: "M4 20V9l8-5 8 5v11M4 20h16M9 20v-6h6v6M9 9h.01M15 9h.01",
   alerts: "M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9",
+  coverage: "M3 12h4l2 5 4-13 2 8h6",
 };
 
 export function BottomNav({ role }: { role: "CORPORATE" | "MANAGER" | "WORKER" }) {
@@ -55,6 +56,7 @@ export function BottomNav({ role }: { role: "CORPORATE" | "MANAGER" | "WORKER" }
   let items: Item[];
   if (role === "CORPORATE") {
     items = [
+      { href: "/coverage", label: "Coverage", icon: <Icon path={ICONS.coverage} /> },
       { href: "/schedule", label: "Schedule", icon: <Icon path={ICONS.schedule} /> },
       { href: "/manage", label: "Approvals", icon: <Icon path={ICONS.approvals} /> },
       { href: "/admin/facilities", label: "Admin", icon: <Icon path={ICONS.admin} /> },
@@ -62,6 +64,7 @@ export function BottomNav({ role }: { role: "CORPORATE" | "MANAGER" | "WORKER" }
     ];
   } else if (role === "MANAGER") {
     items = [
+      { href: "/coverage", label: "Coverage", icon: <Icon path={ICONS.coverage} /> },
       { href: "/schedule", label: "Schedule", icon: <Icon path={ICONS.schedule} /> },
       { href: "/manage", label: "Approvals", icon: <Icon path={ICONS.approvals} /> },
       { href: "/notifications", label: "Alerts", icon: <Icon path={ICONS.alerts} />, badge: true },
