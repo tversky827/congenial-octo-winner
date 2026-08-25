@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -18,7 +18,6 @@ export function TopBar({
   role: "CORPORATE" | "MANAGER" | "WORKER";
   facilityLabel: string;
 }) {
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const firstName = name.split(" ")[0];
 
@@ -29,7 +28,7 @@ export function TopBar({
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-100 bg-white/90 px-4 py-3 backdrop-blur">
-      <div className="flex items-center gap-2">
+      <Link href="/home" className="flex items-center gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/icon.svg" alt="Goldwater Care" className="h-9 w-9" />
         <div className="leading-tight">
@@ -38,7 +37,7 @@ export function TopBar({
             {ROLE_LABEL[role] ?? role} · {facilityLabel}
           </p>
         </div>
-      </div>
+      </Link>
 
       <div className="relative">
         <button
