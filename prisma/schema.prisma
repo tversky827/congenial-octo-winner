@@ -175,6 +175,7 @@ model User {
   assignedShifts  Shift[]        @relation("AssignedShifts")
   claims          Claim[]
   callOffs        CallOff[]      @relation("CallOffs")
+  timeEntries     TimeEntry[]    @relation("TimeEntries")
   notifications   Notification[]
   auditLogs       AuditLog[]
 
@@ -219,8 +220,9 @@ model Shift {
   assignedToId String?
   assignedTo   User?   @relation("AssignedShifts", fields: [assignedToId], references: [id])
 
-  claims   Claim[]
-  callOffs CallOff[]
+  claims    Claim[]
+  callOffs  CallOff[]
+  timeEntries TimeEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -262,6 +264,29 @@ model Claim {
   // A worker can only have one claim per shift.
   @@unique([shiftId, workerId])
   @@index([shiftId, status])
+}
+
+// A time-clock punch pair for one shift: when the employee actually clocked in
+// and out. `actualMinutes` is the worked span (set at clock-out). This is the
+// "Actual" the coverage/labor engines compare against the scheduled plan.
+model TimeEntry {
+  id           String    @id @default(cuid())
+  shiftId      String
+  shift        Shift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  workerId     String
+  worker       User      @relation("TimeEntries", fields: [workerId], references: [id], onDelete: Cascade)
+  facilityId   String?
+  clockInAt    DateTime  @default(now())
+  clockOutAt   DateTime?
+  actualMinutes Int?     // computed at clock-out
+  // Present once payroll math has run for this entry (hours × rate + bonus).
+  actualPay    Float?
+  createdAt    DateTime  @default(now())
+
+  // One open/closed punch pair per worker per shift.
+  @@unique([shiftId, workerId])
+  @@index([workerId])
+  @@index([facilityId])
 }
 
 model Notification {
