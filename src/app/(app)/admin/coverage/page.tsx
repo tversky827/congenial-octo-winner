@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { orgWhere } from "@/lib/tenant";
+import { orgPositionNamesOrDefault } from "@/lib/positionsServer";
 import { FacilityFilter } from "@/components/FacilityFilter";
 import { TemplateEditor } from "@/components/TemplateEditor";
 
@@ -44,7 +45,7 @@ export default async function CoveragePage({
       <div className="mb-4">
         <FacilityFilter facilities={facilities} />
       </div>
-      <TemplateEditor facilityId={facilityId} entries={entries} />
+      <TemplateEditor facilityId={facilityId} entries={entries} positions={await orgPositionNamesOrDefault(me.organizationId)} />
     </div>
   );
 }

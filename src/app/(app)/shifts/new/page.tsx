@@ -3,6 +3,7 @@ import { getCurrentUser, canManage, isCorporate } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PostShiftForm } from "@/components/PostShiftForm";
 import { PageHeader } from "@/components/Page";
+import { orgPositionNamesOrDefault } from "@/lib/positionsServer";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function NewShiftPage() {
   // Corporate chooses a facility; a manager posts to their own.
   const facilities = corporate
     ? await prisma.facility.findMany({
-        where: { active: true },
+        where: { active: true, organizationId: user.organizationId ?? null },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })
@@ -27,10 +28,12 @@ export default async function NewShiftPage() {
       ? (await prisma.facility.findUnique({ where: { id: user.facilityId }, select: { name: true } }))?.name ?? null
       : null;
 
+  const positions = await orgPositionNamesOrDefault(user.organizationId);
+
   return (
     <div>
       <PageHeader title="Post a shift" subtitle="Fill in the details — your team will see the pay before they claim." />
-      <PostShiftForm isCorporate={corporate} facilities={facilities} facilityName={facilityName} />
+      <PostShiftForm isCorporate={corporate} facilities={facilities} facilityName={facilityName} positions={positions} />
     </div>
   );
 }

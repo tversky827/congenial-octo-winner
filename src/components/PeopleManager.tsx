@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { POSITIONS } from "@/lib/positions";
 
 export interface PersonRow {
   id: string;
@@ -25,10 +24,12 @@ export function PeopleManager({
   people,
   facilities,
   currentUserId,
+  positions,
 }: {
   people: PersonRow[];
   facilities: { id: string; name: string }[];
   currentUserId: string;
+  positions: string[];
 }) {
   const router = useRouter();
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -117,7 +118,7 @@ export function PeopleManager({
                       onChange={(e) => patch(p.id, { position: e.target.value })}
                     >
                       <option value="" disabled>Choose a role…</option>
-                      {POSITIONS.map((pos) => (
+                      {positions.map((pos) => (
                         <option key={pos} value={pos}>{pos}</option>
                       ))}
                     </select>

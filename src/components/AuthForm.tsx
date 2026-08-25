@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { POSITIONS } from "@/lib/positions";
+import { DEFAULT_POSITIONS } from "@/lib/positions";
 
 type Mode = "login" | "register";
 type Access = "WORKER" | "MANAGER" | "CORPORATE";
@@ -10,6 +10,8 @@ export function AuthForm() {
   const [mode, setMode] = useState<Mode>("login");
   const [access, setAccess] = useState<Access>("WORKER");
   const [facilities, setFacilities] = useState<{ id: string; name: string }[]>([]);
+  const [facilityId, setFacilityId] = useState("");
+  const [positions, setPositions] = useState<string[]>([...DEFAULT_POSITIONS]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,6 +22,26 @@ export function AuthForm() {
       .then((d) => setFacilities(d.facilities ?? []))
       .catch(() => {});
   }, []);
+
+  // A worker's selectable roles come from their facility's organization.
+  useEffect(() => {
+    if (!facilityId) {
+      setPositions([...DEFAULT_POSITIONS]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/positions?facilityId=${encodeURIComponent(facilityId)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        const names = (d.positions ?? []).map((p: { name: string }) => p.name);
+        setPositions(names.length > 0 ? names : [...DEFAULT_POSITIONS]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
 
   const needsFacility = access === "WORKER" || access === "MANAGER";
   const needsCode = access === "MANAGER" || access === "CORPORATE";
@@ -116,19 +138,6 @@ export function AuthForm() {
               </div>
             </div>
 
-            {access === "WORKER" && (
-              <div>
-                <label className="label" htmlFor="position">Your role</label>
-                <select className="input" id="position" name="position" required defaultValue="">
-                  <option value="" disabled>Choose your role…</option>
-                  {POSITIONS.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-slate-400">You&apos;ll only see shifts for your role.</p>
-              </div>
-            )}
-
             {needsFacility && (
               <div>
                 <label className="label" htmlFor="facilityId">Facility</label>
@@ -138,13 +147,33 @@ export function AuthForm() {
                     Corporate to create them.
                   </p>
                 ) : (
-                  <select className="input" id="facilityId" name="facilityId" required={needsFacility} defaultValue="">
+                  <select
+                    className="input"
+                    id="facilityId"
+                    name="facilityId"
+                    required={needsFacility}
+                    value={facilityId}
+                    onChange={(e) => setFacilityId(e.target.value)}
+                  >
                     <option value="" disabled>Choose your facility…</option>
                     {facilities.map((f) => (
                       <option key={f.id} value={f.id}>{f.name}</option>
                     ))}
                   </select>
                 )}
+              </div>
+            )}
+
+            {access === "WORKER" && (
+              <div>
+                <label className="label" htmlFor="position">Your role</label>
+                <select className="input" id="position" name="position" required defaultValue="">
+                  <option value="" disabled>Choose your role…</option>
+                  {positions.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-400">You&apos;ll only see shifts for your role.</p>
               </div>
             )}
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser, isCorporate } from "@/lib/auth";
 import { sameOrg } from "@/lib/tenant";
 import { audit } from "@/lib/audit";
+import { isAllowedPosition } from "@/lib/positionsServer";
 import { userUpdateSchema } from "@/lib/validation";
 
 // Change a person's role / facility / active state (corporate only).
@@ -27,6 +28,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
   if (!sameOrg(me, target.organizationId)) {
     return NextResponse.json({ error: "That person is in a different organization" }, { status: 403 });
+  }
+  if (parsed.data.position && !(await isAllowedPosition(target.organizationId, parsed.data.position))) {
+    return NextResponse.json({ error: "That role isn't configured for your organization" }, { status: 400 });
   }
 
   const role = parsed.data.role ?? (target.role as "CORPORATE" | "MANAGER" | "WORKER");

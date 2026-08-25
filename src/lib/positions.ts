@@ -1,9 +1,5 @@
-// The fixed set of staff roles. Staff belong to exactly one, and only see
-// shifts posted for that role. Kept in one place so the UI, validation, and
-// queries all agree.
+// Fallback positions used only when an organization hasn't configured its own
+// yet. Positions are now per-organization data (see the Position model); the UI
+// prefers the org's configured list and falls back to this.
 export const POSITIONS = ["CNA", "Nurse"] as const;
-export type Position = (typeof POSITIONS)[number];
-
-export function isValidPosition(value: unknown): value is Position {
-  return typeof value === "string" && (POSITIONS as readonly string[]).includes(value);
-}
+export const DEFAULT_POSITIONS: readonly string[] = POSITIONS;

@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { computePay } from "@/lib/pay";
 import { formatHours, formatMoney } from "@/lib/format";
-import { POSITIONS } from "@/lib/positions";
 
 // Combine a date (YYYY-MM-DD) and a time (HH:MM) into a local Date.
 // If the end time is earlier than the start time, treat it as an overnight shift.
@@ -22,9 +21,10 @@ interface PostShiftFormProps {
   isCorporate: boolean;
   facilities: { id: string; name: string }[];
   facilityName: string | null;
+  positions: string[];
 }
 
-export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShiftFormProps) {
+export function PostShiftForm({ isCorporate, facilities, facilityName, positions }: PostShiftFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -121,7 +121,7 @@ export function PostShiftForm({ isCorporate, facilities, facilityName }: PostShi
           <label className="label" htmlFor="position">Role needed</label>
           <select className="input" id="position" required value={form.position} onChange={set("position")}>
             <option value="" disabled>Choose…</option>
-            {POSITIONS.map((p) => (
+            {positions.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>

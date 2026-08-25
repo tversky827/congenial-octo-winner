@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, canManage, isCorporate } from "@/lib/auth";
 import { createShiftSchema } from "@/lib/validation";
+import { isAllowedPosition } from "@/lib/positionsServer";
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -38,6 +39,10 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+  }
+
+  if (!(await isAllowedPosition(user.organizationId, d.position))) {
+    return NextResponse.json({ error: "That role isn't configured for your organization" }, { status: 400 });
   }
 
   const shift = await prisma.shift.create({

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser, isCorporate } from "@/lib/auth";
 import { sameOrg } from "@/lib/tenant";
 import { audit } from "@/lib/audit";
+import { isAllowedPosition } from "@/lib/positionsServer";
 import { addShiftSchema } from "@/lib/validation";
 import { combineDayTime } from "@/lib/week";
 
@@ -30,6 +31,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
   const d = parsed.data;
+  if (!(await isAllowedPosition(user.organizationId, d.position))) {
+    return NextResponse.json({ error: "That role isn't configured for your organization" }, { status: 400 });
+  }
 
   const start = combineDayTime(schedule.weekStart, d.dayOffset, d.startTime);
   let end = combineDayTime(schedule.weekStart, d.dayOffset, d.endTime);

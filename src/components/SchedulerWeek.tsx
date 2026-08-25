@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/format";
-import { POSITIONS } from "@/lib/positions";
 import { StatusBadge } from "./StatusBadge";
 
 export interface SchedShift {
@@ -38,6 +37,7 @@ interface Props {
   days: SchedDay[];
   staff: { id: string; name: string; position: string }[];
   counts: { total: number; assigned: number; unfilled: number; open: number };
+  positions: string[];
 }
 
 export function SchedulerWeek(props: Props) {
@@ -211,6 +211,7 @@ export function SchedulerWeek(props: Props) {
                     <AddDayForm
                       dayOffset={day.dayOffset}
                       busy={busy === `add-${day.dayOffset}`}
+                      positions={props.positions}
                       onAdd={(body) => addShift(day.dayOffset, body)}
                     />
                   )}
@@ -228,14 +229,16 @@ export function SchedulerWeek(props: Props) {
 function AddDayForm({
   dayOffset,
   busy,
+  positions,
   onAdd,
 }: {
   dayOffset: number;
   busy: boolean;
+  positions: string[];
   onAdd: (body: Record<string, unknown>) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ position: "CNA", startTime: "07:00", endTime: "15:00", bonus: "0" });
+  const [f, setF] = useState({ position: positions[0] ?? "", startTime: "07:00", endTime: "15:00", bonus: "0" });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF((p) => ({ ...p, [k]: e.target.value }));
 
@@ -254,7 +257,7 @@ function AddDayForm({
     <div className="rounded-xl bg-slate-50 p-3">
       <div className="grid grid-cols-2 gap-2">
         <select className="input py-2 text-sm" value={f.position} onChange={set("position")}>
-          {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+          {positions.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
         <input className="input py-2 text-sm" type="number" min="0" step="1" value={f.bonus} onChange={set("bonus")} placeholder="Bonus $" />
         <input className="input py-2 text-sm" type="time" value={f.startTime} onChange={set("startTime")} />

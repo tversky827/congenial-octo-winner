@@ -48,9 +48,46 @@ model Organization {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  facilities Facility[]
-  users      User[]
-  auditLogs  AuditLog[]
+  facilities  Facility[]
+  users       User[]
+  auditLogs   AuditLog[]
+  departments Department[]
+  positions   Position[]
+}
+
+// A department within an organization (Nursing, Dietary, Housekeeping…).
+model Department {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  positions Position[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+// A configurable job position (CNA, RN, LPN, Dietary Aide…). Positions are
+// per-organization data, not a hard-coded enum, so every facility can differ.
+// Shifts and employees still carry the position *name* (denormalized) so the
+// scheduling/marketplace code is unchanged; names are validated against this list.
+model Position {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  name           String
+  // Requires a professional license — used later by the credential/eligibility engine.
+  licensed       Boolean  @default(false)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 model Facility {

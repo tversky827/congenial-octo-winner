@@ -4,8 +4,9 @@ export const registerSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(80),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters").max(200),
-  // Staff role — required for WORKER (enforced in the route), one of CNA / Nurse.
-  position: z.enum(["CNA", "Nurse"]).optional(),
+  // Staff role — required for WORKER (enforced in the route). Validated against
+  // the organization's configured positions in the route.
+  position: z.string().trim().min(1).max(60).optional(),
   // Which kind of account to create. MANAGER/CORPORATE require the management code.
   accessType: z.enum(["WORKER", "MANAGER", "CORPORATE"]).default("WORKER"),
   // Required for WORKER and MANAGER (they belong to one facility). Ignored for CORPORATE.
@@ -21,7 +22,7 @@ export const loginSchema = z.object({
 
 export const createShiftSchema = z
   .object({
-    position: z.enum(["CNA", "Nurse"], { errorMap: () => ({ message: "Choose CNA or Nurse" }) }),
+    position: z.string().trim().min(1, "Choose a role").max(60),
     // The facility the shift belongs to. Corporate must pick one; managers post
     // to their own facility, so the route fills it in when omitted.
     facilityId: z.string().trim().optional().or(z.literal("")),
@@ -55,7 +56,7 @@ const timeString = z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM");
 // Daily coverage entry — applies to every day of the week.
 export const templateShiftSchema = z.object({
   facilityId: z.string().min(1),
-  position: z.enum(["CNA", "Nurse"]),
+  position: z.string().trim().min(1).max(60),
   startTime: timeString,
   endTime: timeString,
   count: z.coerce.number().int().min(1).max(50).default(1),
@@ -65,10 +66,20 @@ export const templateShiftSchema = z.object({
 // Admin day override — add an extra shift to one specific day of a schedule.
 export const addShiftSchema = z.object({
   dayOffset: z.coerce.number().int().min(0).max(6),
-  position: z.enum(["CNA", "Nurse"]),
+  position: z.string().trim().min(1).max(60),
   startTime: timeString,
   endTime: timeString,
   bonus: z.coerce.number().min(0).max(100000).default(0),
+});
+
+export const departmentCreateSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80),
+});
+
+export const positionCreateSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(60),
+  departmentId: z.string().trim().optional().or(z.literal("")),
+  licensed: z.boolean().optional().default(false),
 });
 
 export const generateWeekSchema = z.object({
@@ -84,7 +95,7 @@ export const assignShiftSchema = z.object({
 export const userUpdateSchema = z.object({
   role: z.enum(["CORPORATE", "MANAGER", "WORKER"]).optional(),
   facilityId: z.string().trim().nullable().optional(),
-  position: z.enum(["CNA", "Nurse"]).nullable().optional(),
+  position: z.string().trim().min(1).max(60).nullable().optional(),
   active: z.boolean().optional(),
   // Employee's hourly pay rate, used to compute what they'd earn on a shift.
   baseRate: z.coerce.number().min(0).max(10000).optional(),

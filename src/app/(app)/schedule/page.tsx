@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, canManage, isCorporate } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { orgWhere } from "@/lib/tenant";
+import { orgPositionNamesOrDefault } from "@/lib/positionsServer";
 import {
   parseWeekStart,
   weekKey,
@@ -86,6 +87,8 @@ export default async function SchedulePage({
     select: { id: true, name: true, position: true },
   });
 
+  const positions = await orgPositionNamesOrDefault(user.organizationId);
+
   const assigned = shifts.filter((s) => s.assignedToId).length;
   const open = shifts.filter((s) => s.status === "OPEN").length;
   const counts = {
@@ -113,6 +116,7 @@ export default async function SchedulePage({
         days={days}
         staff={staff.map((s) => ({ id: s.id, name: s.name, position: s.position ?? "" }))}
         counts={counts}
+        positions={positions}
       />
     </div>
   );

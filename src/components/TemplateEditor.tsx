@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { POSITIONS } from "@/lib/positions";
 import { formatMoney } from "@/lib/format";
 
 export interface TemplateEntry {
@@ -17,15 +16,17 @@ export interface TemplateEntry {
 export function TemplateEditor({
   facilityId,
   entries,
+  positions,
 }: {
   facilityId: string;
   entries: TemplateEntry[];
+  positions: string[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
-    position: "CNA",
+    position: positions[0] ?? "",
     startTime: "07:00",
     endTime: "15:00",
     count: "1",
@@ -67,7 +68,7 @@ export function TemplateEditor({
           <div>
             <label className="label">Role</label>
             <select className="input py-2 text-sm" value={form.position} onChange={set("position")}>
-              {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+              {positions.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
           <div>

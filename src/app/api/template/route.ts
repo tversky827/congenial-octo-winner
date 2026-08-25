@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, isCorporate } from "@/lib/auth";
 import { sameOrg } from "@/lib/tenant";
+import { isAllowedPosition } from "@/lib/positionsServer";
 import { templateShiftSchema } from "@/lib/validation";
 
 // List a facility's staffing template (corporate only).
@@ -34,6 +35,9 @@ export async function POST(req: Request) {
   if (!facility) return NextResponse.json({ error: "Facility not found" }, { status: 400 });
   if (!sameOrg(user, facility.organizationId)) {
     return NextResponse.json({ error: "That facility is in a different organization" }, { status: 403 });
+  }
+  if (!(await isAllowedPosition(facility.organizationId, d.position))) {
+    return NextResponse.json({ error: "That role isn't configured for your organization" }, { status: 400 });
   }
 
   const entry = await prisma.templateShift.create({

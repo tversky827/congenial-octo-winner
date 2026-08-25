@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { createSession, hashPassword } from "@/lib/auth";
 import { registerSchema } from "@/lib/validation";
 import { audit } from "@/lib/audit";
+import { isAllowedPosition } from "@/lib/positionsServer";
 
 export async function POST(req: Request) {
   const json = await req.json().catch(() => null);
@@ -42,9 +43,15 @@ export async function POST(req: Request) {
     resolvedOrgId = orgs.length === 1 ? orgs[0].id : null;
   }
 
-  // Staff must pick their role (CNA or Nurse) — it decides which shifts they see.
-  if (accessType === "WORKER" && !position) {
-    return NextResponse.json({ error: "Please choose your role (CNA or Nurse)" }, { status: 400 });
+  // Staff must pick their role — it decides which shifts they see, and it must be
+  // one the facility's organization actually offers.
+  if (accessType === "WORKER") {
+    if (!position) {
+      return NextResponse.json({ error: "Please choose your role" }, { status: 400 });
+    }
+    if (!(await isAllowedPosition(resolvedOrgId, position))) {
+      return NextResponse.json({ error: "That role isn't offered at this facility" }, { status: 400 });
+    }
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });

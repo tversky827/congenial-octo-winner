@@ -25,6 +25,23 @@ async function main() {
     create: { name: "Goldwater Care", slug: "goldwater-care" },
   });
 
+  // The org's clinical department and the two staff positions it employs.
+  const nursing = await prisma.department.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "Nursing" } },
+    update: {},
+    create: { organizationId: org.id, name: "Nursing" },
+  });
+  await prisma.position.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "CNA" } },
+    update: { departmentId: nursing.id, licensed: false, active: true },
+    create: { organizationId: org.id, departmentId: nursing.id, name: "CNA", licensed: false },
+  });
+  await prisma.position.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "Nurse" } },
+    update: { departmentId: nursing.id, licensed: true, active: true },
+    create: { organizationId: org.id, departmentId: nursing.id, name: "Nurse", licensed: true },
+  });
+
   // Facilities (each has its own shift board).
   const sunrise = await prisma.facility.upsert({
     where: { id: "seed-sunrise" },
