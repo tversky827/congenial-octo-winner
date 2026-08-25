@@ -14,6 +14,7 @@ export interface SchedShift {
   bonus: number;
   status: string;
   assignedToId: string | null;
+  agencyLabel: string | null;
 }
 
 export interface SchedDay {
@@ -39,6 +40,7 @@ interface Props {
   staff: { id: string; name: string; position: string; weeklyMinutes: number }[];
   counts: { total: number; assigned: number; unfilled: number; open: number };
   positions: string[];
+  agencies: { id: string; name: string }[];
 }
 
 export function SchedulerWeek(props: Props) {
@@ -85,6 +87,15 @@ export function SchedulerWeek(props: Props) {
 
   const removeShift = (shiftId: string) =>
     call(`rm-${shiftId}`, () => fetch(`/api/shifts/${shiftId}`, { method: "DELETE" }));
+
+  const agencyFill = (shiftId: string, agencyId: string) =>
+    call(`ag-${shiftId}`, () =>
+      fetch(`/api/shifts/${shiftId}/agency-fill`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agencyId }),
+      })
+    );
 
   const addShift = (dayOffset: number, body: Record<string, unknown>) =>
     props.scheduleId
@@ -206,6 +217,22 @@ export function SchedulerWeek(props: Props) {
                             ⚠ {assignedWorker!.name}: {assignedProj.totalHours}h this week
                             {assignedProj.overtimeHours > 0 ? ` (${assignedProj.overtimeHours}h over 40)` : " — approaching overtime"}
                           </p>
+                        )}
+                        {s.agencyLabel && (
+                          <p className="mt-1 text-xs font-medium text-purple-700">🏢 Agency: {s.agencyLabel}</p>
+                        )}
+                        {!s.assignedToId && !s.agencyLabel && props.agencies.length > 0 && (
+                          <select
+                            className="input mt-2 py-2 text-xs"
+                            value=""
+                            disabled={busy === `ag-${s.id}`}
+                            onChange={(e) => e.target.value && agencyFill(s.id, e.target.value)}
+                          >
+                            <option value="">Or fill with an agency…</option>
+                            {props.agencies.map((a) => (
+                              <option key={a.id} value={a.id}>{a.name}</option>
+                            ))}
+                          </select>
                         )}
                         {props.isCorporate && (
                           <div className="mt-2 text-right">

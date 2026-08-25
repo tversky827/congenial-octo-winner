@@ -55,7 +55,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
             <Metric label="Labor cost" value={formatMoney(t.laborCost)} />
             <Metric label="Fill rate" value={`${t.fillRatePct}%`} />
             <Metric label="Hours worked" value={`${t.hoursWorked}h`} />
-            <Metric label="Call-offs" value={String(t.callOffs)} />
+            <Metric label="Agency fills" value={String(t.agencyFilled)} />
           </div>
 
           <div className="mb-2 flex items-center justify-between text-xs text-slate-500">

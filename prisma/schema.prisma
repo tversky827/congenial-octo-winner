@@ -53,6 +53,27 @@ model Organization {
   auditLogs   AuditLog[]
   departments Department[]
   positions   Position[]
+  agencies    Agency[]
+}
+
+// A staffing agency partner the org uses to fill shifts in-house staff can't.
+// Agency labor is billed at billRate/hour (typically higher than employee pay).
+model Agency {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  contactName    String?
+  contactPhone   String?
+  contactEmail   String?
+  billRate       Float    @default(0) // $/hour billed for agency staff
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  shifts Shift[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 // A department within an organization (Nursing, Dietary, Housekeeping…).
@@ -223,6 +244,13 @@ model Shift {
   // approved marketplace claim (FILLED).
   assignedToId String?
   assignedTo   User?   @relation("AssignedShifts", fields: [assignedToId], references: [id])
+
+  // Alternatively, an open shift can be filled by a staffing agency instead of
+  // an employee. When set, assignedToId is null and the labor is billed at the
+  // agency's rate.
+  agencyId        String?
+  agency          Agency? @relation(fields: [agencyId], references: [id])
+  agencyWorkerName String?
 
   claims    Claim[]
   callOffs  CallOff[]

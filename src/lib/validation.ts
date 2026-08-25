@@ -87,6 +87,19 @@ export const positionCreateSchema = z.object({
   requiredCredential: z.string().trim().max(80).optional().or(z.literal("")),
 });
 
+export const agencyCreateSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(120),
+  contactName: z.string().trim().max(120).optional().or(z.literal("")),
+  contactPhone: z.string().trim().max(40).optional().or(z.literal("")),
+  contactEmail: z.string().trim().max(200).optional().or(z.literal("")),
+  billRate: z.coerce.number().min(0).max(10000).default(0),
+});
+
+export const agencyFillSchema = z.object({
+  agencyId: z.string().min(1),
+  workerName: z.string().trim().max(120).optional().or(z.literal("")),
+});
+
 export const credentialCreateSchema = z.object({
   workerId: z.string().min(1),
   type: z.string().trim().min(1, "Type is required").max(80),

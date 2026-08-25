@@ -57,7 +57,7 @@ export default async function SchedulePage({
 
   const schedule = await prisma.schedule.findUnique({
     where: { facilityId_weekStart: { facilityId, weekStart } },
-    include: { shifts: { orderBy: { startTime: "asc" } } },
+    include: { shifts: { orderBy: { startTime: "asc" }, include: { agency: { select: { name: true } } } } },
   });
   const built = !!schedule && schedule.shifts.length > 0;
   const shifts = schedule?.shifts ?? [];
@@ -77,8 +77,16 @@ export default async function SchedulePage({
           bonus: s.bonus,
           status: s.status,
           assignedToId: s.assignedToId,
+          agencyLabel: s.agencyId ? `${s.agency?.name ?? "Agency"}${s.agencyWorkerName ? ` · ${s.agencyWorkerName}` : ""}` : null,
         })),
     };
+  });
+
+  // Agency partners available to fill open shifts.
+  const agencies = await prisma.agency.findMany({
+    where: { organizationId: user.organizationId ?? undefined, active: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
   });
 
   const staff = await prisma.user.findMany({
@@ -141,6 +149,7 @@ export default async function SchedulePage({
         }))}
         counts={counts}
         positions={positions}
+        agencies={agencies}
       />
     </div>
   );

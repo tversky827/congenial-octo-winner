@@ -9,6 +9,7 @@ export interface FacilityReport {
   confirmed: number;
   open: number;
   completed: number;
+  agencyFilled: number;
   callOffs: number;
   fillRatePct: number;
   labor: ReturnType<typeof summarizeLabor>;
@@ -23,6 +24,7 @@ export interface OrgReport {
     confirmed: number;
     open: number;
     completed: number;
+    agencyFilled: number;
     callOffs: number;
     fillRatePct: number;
     laborCost: number;
@@ -47,10 +49,12 @@ async function facilityReport(
       select: {
         status: true,
         assignedToId: true,
+        agencyId: true,
         startTime: true,
         endTime: true,
         bonus: true,
         assignedTo: { select: { baseRate: true } },
+        agency: { select: { billRate: true } },
         timeEntries: { select: { actualPay: true, actualMinutes: true } },
       },
     }),
@@ -60,16 +64,20 @@ async function facilityReport(
   let confirmed = 0;
   let open = 0;
   let completed = 0;
+  let agencyFilled = 0;
   const laborLines: LaborLine[] = shifts.map((s) => {
     if (s.status === "OPEN") open++;
-    if (s.assignedToId) confirmed++;
+    if (s.assignedToId || s.agencyId) confirmed++;
+    if (s.agencyId) agencyFilled++;
     if (s.status === "COMPLETED") completed++;
 
-    const rate = s.assignedTo?.baseRate ?? 0;
+    // Agency shifts bill at the agency rate; employee shifts at their pay rate.
+    const rate = s.agencyId ? s.agency?.billRate ?? 0 : s.assignedTo?.baseRate ?? 0;
     const projectedPay = actualPay(shiftMinutes(s.startTime, s.endTime), rate, s.bonus);
     const entry = s.timeEntries[0];
     return {
-      actualPay: entry?.actualPay ?? null,
+      // Agency labor has no clock punch, so it's always the projection.
+      actualPay: s.agencyId ? null : entry?.actualPay ?? null,
       projectedPay,
       workedMinutes: entry?.actualMinutes ?? null,
     };
@@ -84,6 +92,7 @@ async function facilityReport(
     confirmed,
     open,
     completed,
+    agencyFilled,
     callOffs,
     fillRatePct: fillRate({ scheduled, confirmed, open }),
     labor,
@@ -113,6 +122,7 @@ export async function orgReport(
       confirmed,
       open: sum((r) => r.open),
       completed: sum((r) => r.completed),
+      agencyFilled: sum((r) => r.agencyFilled),
       callOffs: sum((r) => r.callOffs),
       fillRatePct: pct(confirmed, scheduled),
       laborCost: Math.round(sum((r) => r.labor.totalCost) * 100) / 100,

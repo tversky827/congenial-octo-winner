@@ -49,7 +49,7 @@ export async function facilityWeekCoverage(
       include: {
         shifts: {
           where: { status: { not: "CANCELLED" } },
-          select: { position: true, assignedToId: true, startTime: true },
+          select: { position: true, assignedToId: true, agencyId: true, startTime: true },
         },
       },
     }),
@@ -65,7 +65,7 @@ export async function facilityWeekCoverage(
   for (const s of shifts) {
     const key = utcDayKey(s.startTime);
     const arr = byDay.get(key) ?? [];
-    arr.push({ position: s.position, assigned: !!s.assignedToId });
+    arr.push({ position: s.position, assigned: !!s.assignedToId || !!s.agencyId });
     byDay.set(key, arr);
   }
 
@@ -79,7 +79,7 @@ export async function facilityWeekCoverage(
   const weekLines = buildCoverageLines(
     // Required is per-day × 7 for the weekly view.
     Object.fromEntries(Object.entries(requiredByPosition).map(([p, c]) => [p, c * days.length])),
-    shifts.map((s) => ({ position: s.position, assigned: !!s.assignedToId }))
+    shifts.map((s) => ({ position: s.position, assigned: !!s.assignedToId || !!s.agencyId }))
   );
 
   return {
