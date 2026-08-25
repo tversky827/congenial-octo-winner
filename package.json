@@ -9,6 +9,8 @@
     "build:vercel": "node scripts/make-prod-schema.mjs && prisma generate --schema=prisma/schema.production.prisma && prisma db push --schema=prisma/schema.production.prisma --skip-generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
@@ -39,6 +41,7 @@
     "sharp": "0.33.5",
     "tailwindcss": "3.4.13",
     "tsx": "4.19.1",
-    "typescript": "5.6.3"
+    "typescript": "5.6.3",
+    "vitest": "^2.1.9"
   }
 }

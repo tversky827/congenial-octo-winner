@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, canManage, isCorporate } from "@/lib/auth";
 import { canAccessFacility } from "@/lib/access";
+import { sameOrg } from "@/lib/tenant";
+import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 
 // Cancel a shift (scheduler only). Notifies anyone with an active claim.
@@ -17,10 +19,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const shift = await prisma.shift.findUnique({
     where: { id: params.id },
-    include: { claims: { where: { status: { in: ["PENDING", "APPROVED"] } } } },
+    include: {
+      claims: { where: { status: { in: ["PENDING", "APPROVED"] } } },
+      facility: { select: { organizationId: true } },
+    },
   });
   if (!shift) return NextResponse.json({ error: "Shift not found" }, { status: 404 });
-  if (!canAccessFacility(user, shift.facilityId)) {
+  if (!canAccessFacility(user, shift.facilityId) || !sameOrg(user, shift.facility?.organizationId)) {
     return NextResponse.json({ error: "That shift is at a different facility" }, { status: 403 });
   }
 
@@ -64,10 +69,13 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   const shift = await prisma.shift.findUnique({
     where: { id: params.id },
-    include: { claims: { where: { status: { in: ["PENDING", "APPROVED"] } } } },
+    include: {
+      claims: { where: { status: { in: ["PENDING", "APPROVED"] } } },
+      facility: { select: { organizationId: true } },
+    },
   });
   if (!shift) return NextResponse.json({ error: "Shift not found" }, { status: 404 });
-  if (!canAccessFacility(user, shift.facilityId)) {
+  if (!canAccessFacility(user, shift.facilityId) || !sameOrg(user, shift.facility?.organizationId)) {
     return NextResponse.json({ error: "That shift is at a different facility" }, { status: 403 });
   }
   // Changing a scheduled day's shifts is admin-only; schedulers just fill them.
@@ -88,5 +96,10 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   );
 
   await prisma.shift.delete({ where: { id: shift.id } });
+  await audit({
+    actorId: user.id, actorName: user.name, organizationId: user.organizationId,
+    action: "shift.delete", entityType: "Shift", entityId: shift.id,
+    before: { title: shift.title, position: shift.position, status: shift.status },
+  });
   return NextResponse.json({ ok: true });
 }

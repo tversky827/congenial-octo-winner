@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "./db";
 import type { User } from "@prisma/client";
+import { can, normalizeRole } from "./rbac";
 
 // SQLite has no native enums, so role is a string on the model. This union keeps
 // the rest of the app type-safe about the valid values.
@@ -79,16 +80,20 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
+// These stay for backward compatibility but now delegate to the central RBAC
+// engine, so they also understand the new role set (not just the legacy strings).
 export function isCorporate(user: Pick<User, "role"> | null): boolean {
-  return user?.role === "CORPORATE";
+  if (!user) return false;
+  const r = normalizeRole(user.role);
+  return r === "CORPORATE_ADMIN" || r === "SUPER_ADMIN";
 }
 
 /** Facility scheduler for a single site. */
 export function isManager(user: Pick<User, "role"> | null): boolean {
-  return user?.role === "MANAGER";
+  return !!user && normalizeRole(user.role) === "SCHEDULER";
 }
 
-/** Anyone who can post shifts and approve claims (corporate or a facility manager). */
+/** Anyone who can build schedules / assign staff (corporate, admins, schedulers…). */
 export function canManage(user: Pick<User, "role"> | null): boolean {
-  return user?.role === "CORPORATE" || user?.role === "MANAGER";
+  return can(user, "shift.assign") || can(user, "schedule.publish");
 }

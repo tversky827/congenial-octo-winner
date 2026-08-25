@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, isCorporate } from "@/lib/auth";
+import { sameOrg } from "@/lib/tenant";
+import { audit } from "@/lib/audit";
 import { userUpdateSchema } from "@/lib/validation";
 
 // Change a person's role / facility / active state (corporate only).
@@ -23,6 +25,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const target = await prisma.user.findUnique({ where: { id: params.id } });
   if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  if (!sameOrg(me, target.organizationId)) {
+    return NextResponse.json({ error: "That person is in a different organization" }, { status: 403 });
+  }
 
   const role = parsed.data.role ?? (target.role as "CORPORATE" | "MANAGER" | "WORKER");
   // Corporate users have no facility; workers and managers must have one.
@@ -40,6 +45,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (facilityId) {
     const facility = await prisma.facility.findUnique({ where: { id: facilityId } });
     if (!facility) return NextResponse.json({ error: "Facility not found" }, { status: 400 });
+    if (!sameOrg(me, facility.organizationId)) {
+      return NextResponse.json({ error: "That facility is in a different organization" }, { status: 403 });
+    }
   }
 
   const updated = await prisma.user.update({
@@ -52,5 +60,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(parsed.data.position !== undefined ? { position: parsed.data.position } : {}),
     },
   });
+
+  await audit({
+    actorId: me.id,
+    actorName: me.name,
+    organizationId: me.organizationId,
+    action: "user.update",
+    entityType: "User",
+    entityId: updated.id,
+    before: { role: target.role, facilityId: target.facilityId, baseRate: target.baseRate, position: target.position, active: target.active },
+    after: { role: updated.role, facilityId: updated.facilityId, baseRate: updated.baseRate, position: updated.position, active: updated.active },
+  });
+
   return NextResponse.json({ id: updated.id, role: updated.role, facilityId: updated.facilityId });
 }

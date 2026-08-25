@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { orgWhere } from "@/lib/tenant";
 import { FacilityFilter } from "@/components/FacilityFilter";
 import { TemplateEditor } from "@/components/TemplateEditor";
 
@@ -9,8 +11,9 @@ export default async function CoveragePage({
 }: {
   searchParams: { facility?: string };
 }) {
+  const me = (await getCurrentUser())!;
   const facilities = await prisma.facility.findMany({
-    where: { active: true },
+    where: { active: true, ...orgWhere(me) },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });

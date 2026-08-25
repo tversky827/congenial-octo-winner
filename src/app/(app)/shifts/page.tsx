@@ -1,6 +1,7 @@
 import { getCurrentUser, canManage } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { facilityScopeWhere } from "@/lib/access";
+import { orgWhere, orgViaFacilityWhere } from "@/lib/tenant";
 import { ShiftCard, type ShiftCardData } from "@/components/ShiftCard";
 import { PageHeader, EmptyState } from "@/components/Page";
 import { FacilityFilter } from "@/components/FacilityFilter";
@@ -59,7 +60,7 @@ export default async function ShiftsPage({
   let facilityFilter: React.ReactNode = null;
   if (user.role === "CORPORATE") {
     const facilities = await prisma.facility.findMany({
-      where: { active: true },
+      where: { active: true, ...orgWhere(user) },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     });
@@ -72,6 +73,7 @@ export default async function ShiftsPage({
       where: {
         status: { in: ["OPEN", "FILLED"] },
         ...facilityScopeWhere(user, selectedFacility),
+        ...orgViaFacilityWhere(user),
       },
       orderBy: { startTime: "asc" },
       include: {

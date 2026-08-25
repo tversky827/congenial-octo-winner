@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, isCorporate } from "@/lib/auth";
+import { sameOrg } from "@/lib/tenant";
+import { audit } from "@/lib/audit";
 import { addShiftSchema } from "@/lib/validation";
 import { combineDayTime } from "@/lib/week";
 
@@ -13,8 +15,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "Only corporate can change a day's shifts" }, { status: 403 });
   }
 
-  const schedule = await prisma.schedule.findUnique({ where: { id: params.id } });
+  const schedule = await prisma.schedule.findUnique({
+    where: { id: params.id },
+    include: { facility: { select: { organizationId: true } } },
+  });
   if (!schedule) return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+  if (!sameOrg(user, schedule.facility?.organizationId)) {
+    return NextResponse.json({ error: "Out of your scope" }, { status: 403 });
+  }
 
   const json = await req.json().catch(() => null);
   const parsed = addShiftSchema.safeParse(json);
@@ -40,6 +48,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       status: schedule.published ? "OPEN" : "PLANNED",
       postedById: user.id,
     },
+  });
+  await audit({
+    actorId: user.id, actorName: user.name, organizationId: user.organizationId,
+    action: "shift.create", entityType: "Shift", entityId: shift.id,
+    after: { position: d.position, scheduleId: schedule.id, dayOffset: d.dayOffset },
   });
   return NextResponse.json({ id: shift.id });
 }

@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { orgWhere } from "@/lib/tenant";
 import { CreateFacilityForm } from "@/components/CreateFacilityForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminFacilitiesPage() {
+  const user = (await getCurrentUser())!;
   const facilities = await prisma.facility.findMany({
+    where: orgWhere(user),
     orderBy: { name: "asc" },
     include: {
       _count: { select: { users: true, shifts: true } },

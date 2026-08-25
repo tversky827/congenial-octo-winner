@@ -36,18 +36,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Facility {
+// The tenant boundary — one customer (a company that may own many SNFs). Every
+// facility, user, and downstream record belongs to exactly one organization, and
+// data is isolated by it. `organizationId` is nullable during the additive
+// migration and backfilled into a default org so the live app keeps working.
+model Organization {
   id        String   @id @default(cuid())
   name      String
-  // Optional address / description shown to staff.
-  address   String?
+  // URL-friendly handle, e.g. "goldwater-care".
+  slug      String   @unique
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  facilities Facility[]
+  users      User[]
+  auditLogs  AuditLog[]
+}
+
+model Facility {
+  id             String  @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  name           String
+  // Optional address / description shown to staff.
+  address        String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
 
   users          User[]
   shifts         Shift[]
   templateShifts TemplateShift[]
   schedules      Schedule[]
+
+  @@index([organizationId])
 }
 
 // A facility's DAILY staffing budget — the coverage the corporate admin sets,
@@ -87,11 +108,13 @@ model Schedule {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         String   @default("WORKER")
+  id             String  @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  email          String  @unique
+  passwordHash   String
+  name           String
+  role           String  @default("WORKER")
   // The facility this person belongs to. Null for CORPORATE (sees all).
   facilityId   String?
   facility     Facility? @relation(fields: [facilityId], references: [id])
@@ -107,8 +130,10 @@ model User {
   assignedShifts  Shift[]        @relation("AssignedShifts")
   claims          Claim[]
   notifications   Notification[]
+  auditLogs       AuditLog[]
 
   @@index([facilityId])
+  @@index([organizationId])
 }
 
 model Shift {
@@ -186,4 +211,27 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId, read])
+}
+
+// Immutable record of every consequential action. Append-only in practice —
+// the app never updates or deletes rows here.
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  // Who did it (nullable for system actions).
+  actorId        String?
+  actor          User?    @relation(fields: [actorId], references: [id])
+  actorName      String? // denormalized so the log survives user deletion
+  action         String // e.g. "shift.assign", "schedule.publish", "user.role_change"
+  entityType     String? // "Shift", "Schedule", "User"…
+  entityId       String?
+  // JSON snapshots of the change (stringified) for before/after diffing.
+  before         String?
+  after          String?
+  ip             String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
 }

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, canManage } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { facilityScopeWhere } from "@/lib/access";
+import { orgWhere, orgViaFacilityWhere } from "@/lib/tenant";
 import { computePay } from "@/lib/pay";
 import { formatDateRange, formatHours, formatMoney, formatRelativeTime } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -28,6 +29,7 @@ export default async function ManagePage({
       status: "OPEN",
       claims: { some: { status: "PENDING" } },
       ...facilityScopeWhere(user, selectedFacility),
+      ...orgViaFacilityWhere(user),
     },
     orderBy: { startTime: "asc" },
     include: {
@@ -45,7 +47,7 @@ export default async function ManagePage({
   let facilityFilter: React.ReactNode = null;
   if (user.role === "CORPORATE") {
     const facilities = await prisma.facility.findMany({
-      where: { active: true },
+      where: { active: true, ...orgWhere(user) },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     });

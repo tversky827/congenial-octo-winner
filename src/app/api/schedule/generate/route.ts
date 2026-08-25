@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, canManage } from "@/lib/auth";
 import { canAccessFacility } from "@/lib/access";
+import { sameOrg } from "@/lib/tenant";
+import { audit } from "@/lib/audit";
 import { generateWeekSchema } from "@/lib/validation";
 import { parseWeekStart, combineDayTime } from "@/lib/week";
 
@@ -18,6 +20,10 @@ export async function POST(req: Request) {
 
   const { facilityId } = parsed.data;
   if (!canAccessFacility(user, facilityId)) {
+    return NextResponse.json({ error: "That facility is out of your scope" }, { status: 403 });
+  }
+  const fac = await prisma.facility.findUnique({ where: { id: facilityId }, select: { organizationId: true } });
+  if (!fac || !sameOrg(user, fac.organizationId)) {
     return NextResponse.json({ error: "That facility is out of your scope" }, { status: 403 });
   }
   const weekStart = parseWeekStart(parsed.data.weekStart);
@@ -79,5 +85,10 @@ export async function POST(req: Request) {
   }
 
   await prisma.shift.createMany({ data });
+  await audit({
+    actorId: user.id, actorName: user.name, organizationId: user.organizationId,
+    action: "schedule.generate", entityType: "Schedule", entityId: schedule.id,
+    after: { facilityId, created: data.length },
+  });
   return NextResponse.json({ scheduleId: schedule.id, created: data.length });
 }

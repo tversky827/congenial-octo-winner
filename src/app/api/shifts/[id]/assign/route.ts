@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, canManage } from "@/lib/auth";
 import { canAccessFacility } from "@/lib/access";
+import { sameOrg } from "@/lib/tenant";
+import { audit } from "@/lib/audit";
 import { assignShiftSchema } from "@/lib/validation";
 import { notify } from "@/lib/notify";
 
@@ -17,10 +19,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const shift = await prisma.shift.findUnique({
     where: { id: params.id },
-    include: { schedule: true },
+    include: { schedule: true, facility: { select: { organizationId: true } } },
   });
   if (!shift) return NextResponse.json({ error: "Shift not found" }, { status: 404 });
-  if (!canAccessFacility(user, shift.facilityId)) {
+  if (!canAccessFacility(user, shift.facilityId) || !sameOrg(user, shift.facility?.organizationId)) {
     return NextResponse.json({ error: "Out of your scope" }, { status: 403 });
   }
 
@@ -32,6 +34,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     await prisma.shift.update({
       where: { id: shift.id },
       data: { assignedToId: null, status: published ? "OPEN" : "PLANNED" },
+    });
+    await audit({
+      actorId: user.id, actorName: user.name, organizationId: user.organizationId,
+      action: "shift.unassign", entityType: "Shift", entityId: shift.id,
+      before: { assignedToId: shift.assignedToId },
     });
     return NextResponse.json({ ok: true, status: published ? "OPEN" : "PLANNED" });
   }
@@ -69,6 +76,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       link: "/my-shifts",
     });
   }
+
+  await audit({
+    actorId: user.id, actorName: user.name, organizationId: user.organizationId,
+    action: "shift.assign", entityType: "Shift", entityId: shift.id,
+    before: { assignedToId: shift.assignedToId },
+    after: { assignedToId: worker.id, worker: worker.name },
+  });
 
   return NextResponse.json({ ok: true, status: "ASSIGNED" });
 }

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, canManage } from "@/lib/auth";
 import { canAccessFacility } from "@/lib/access";
+import { sameOrg } from "@/lib/tenant";
+import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { decideClaimSchema } from "@/lib/validation";
 
@@ -21,10 +23,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const claim = await prisma.claim.findUnique({
     where: { id: params.id },
-    include: { shift: true, worker: true },
+    include: { shift: { include: { facility: { select: { organizationId: true } } } }, worker: true },
   });
   if (!claim) return NextResponse.json({ error: "Claim not found" }, { status: 404 });
-  if (!canAccessFacility(user, claim.shift.facilityId)) {
+  if (!canAccessFacility(user, claim.shift.facilityId) || !sameOrg(user, claim.shift.facility?.organizationId)) {
     return NextResponse.json({ error: "That shift is at a different facility" }, { status: 403 });
   }
 
@@ -42,9 +44,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ ok: true });
   }
 
-  // APPROVED: assign this worker, fill the shift, reject other pending claims.
-  if (claim.shift.status !== "OPEN") {
-    return NextResponse.json({ error: "This shift is no longer open" }, { status: 409 });
+  // APPROVED: fill the shift atomically so two concurrent approvals can't both
+  // win. The conditional update on status="OPEN" is the single source of truth —
+  // exactly one caller flips it and gets the shift.
+  const filled = await prisma.shift.updateMany({
+    where: { id: claim.shiftId, status: "OPEN" },
+    data: { status: "FILLED", assignedToId: claim.workerId },
+  });
+  if (filled.count === 0) {
+    return NextResponse.json({ error: "This shift has already been filled." }, { status: 409 });
   }
 
   const otherClaims = await prisma.claim.findMany({
@@ -61,8 +69,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       where: { id: { in: otherClaims.map((c) => c.id) } },
       data: { status: "REJECTED", decidedAt: new Date() },
     }),
-    prisma.shift.update({ where: { id: claim.shiftId }, data: { status: "FILLED", assignedToId: claim.workerId } }),
   ]);
+
+  await audit({
+    actorId: user.id, actorName: user.name, organizationId: user.organizationId,
+    action: "pickup.approve", entityType: "Shift", entityId: claim.shiftId,
+    after: { worker: claim.worker.name, claimId: claim.id },
+  });
 
   await notify({
     userId: claim.workerId,

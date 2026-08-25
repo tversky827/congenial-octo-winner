@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { createSession, hashPassword } from "@/lib/auth";
 import { registerSchema } from "@/lib/validation";
+import { audit } from "@/lib/audit";
 
 export async function POST(req: Request) {
   const json = await req.json().catch(() => null);
@@ -21,8 +22,9 @@ export async function POST(req: Request) {
     }
   }
 
-  // WORKER and MANAGER must belong to a real facility.
+  // WORKER and MANAGER must belong to a real facility; they inherit its org.
   let resolvedFacilityId: string | null = null;
+  let resolvedOrgId: string | null = null;
   if (accessType === "WORKER" || accessType === "MANAGER") {
     if (!facilityId) {
       return NextResponse.json({ error: "Please choose your facility" }, { status: 400 });
@@ -32,6 +34,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "That facility no longer exists" }, { status: 400 });
     }
     resolvedFacilityId = facility.id;
+    resolvedOrgId = facility.organizationId;
+  } else if (accessType === "CORPORATE") {
+    // Corporate joins the single existing organization if there is exactly one;
+    // otherwise they'll create/claim one via the setup flow.
+    const orgs = await prisma.organization.findMany({ take: 2, select: { id: true } });
+    resolvedOrgId = orgs.length === 1 ? orgs[0].id : null;
   }
 
   // Staff must pick their role (CNA or Nurse) — it decides which shifts they see.
@@ -55,7 +63,18 @@ export async function POST(req: Request) {
       position: position || null,
       role: accessType,
       facilityId: resolvedFacilityId,
+      organizationId: resolvedOrgId,
     },
+  });
+
+  await audit({
+    actorId: user.id,
+    actorName: user.name,
+    organizationId: user.organizationId,
+    action: "user.register",
+    entityType: "User",
+    entityId: user.id,
+    after: { email: user.email, role: user.role, facilityId: user.facilityId },
   });
 
   await createSession(user);

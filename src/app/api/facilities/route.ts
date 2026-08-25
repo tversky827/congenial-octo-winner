@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, isCorporate } from "@/lib/auth";
 import { facilityCreateSchema } from "@/lib/validation";
+import { audit } from "@/lib/audit";
 
 // List active facilities. Public so the sign-up screen can populate its dropdown;
 // only non-sensitive fields (id, name) are returned.
@@ -32,7 +33,20 @@ export async function POST(req: Request) {
   }
 
   const facility = await prisma.facility.create({
-    data: { name: parsed.data.name, address: parsed.data.address || null },
+    data: {
+      name: parsed.data.name,
+      address: parsed.data.address || null,
+      organizationId: user.organizationId,
+    },
+  });
+  await audit({
+    actorId: user.id,
+    actorName: user.name,
+    organizationId: user.organizationId,
+    action: "facility.create",
+    entityType: "Facility",
+    entityId: facility.id,
+    after: { name: facility.name },
   });
   return NextResponse.json({ id: facility.id, name: facility.name });
 }

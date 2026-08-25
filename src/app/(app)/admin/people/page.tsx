@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { orgWhere } from "@/lib/tenant";
 import { PeopleManager } from "@/components/PeopleManager";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export default async function AdminPeoplePage() {
 
   const [people, facilities] = await Promise.all([
     prisma.user.findMany({
+      where: orgWhere(me),
       orderBy: [{ role: "asc" }, { name: "asc" }],
       select: {
         id: true,
@@ -22,7 +24,7 @@ export default async function AdminPeoplePage() {
       },
     }),
     prisma.facility.findMany({
-      where: { active: true },
+      where: { active: true, ...orgWhere(me) },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),

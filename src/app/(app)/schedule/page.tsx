@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser, canManage, isCorporate } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { orgWhere } from "@/lib/tenant";
 import {
   parseWeekStart,
   weekKey,
@@ -33,7 +34,7 @@ export default async function SchedulePage({
 
   const corporate = isCorporate(user);
   const facilities = corporate
-    ? await prisma.facility.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } })
+    ? await prisma.facility.findMany({ where: { active: true, ...orgWhere(user) }, orderBy: { name: "asc" }, select: { id: true, name: true } })
     : [];
   const facilityId = corporate ? searchParams.facility || facilities[0]?.id || "" : user.facilityId || "";
 

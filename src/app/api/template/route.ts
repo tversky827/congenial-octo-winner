@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, isCorporate } from "@/lib/auth";
+import { sameOrg } from "@/lib/tenant";
 import { templateShiftSchema } from "@/lib/validation";
 
 // List a facility's staffing template (corporate only).
@@ -31,6 +32,9 @@ export async function POST(req: Request) {
   const d = parsed.data;
   const facility = await prisma.facility.findUnique({ where: { id: d.facilityId } });
   if (!facility) return NextResponse.json({ error: "Facility not found" }, { status: 400 });
+  if (!sameOrg(user, facility.organizationId)) {
+    return NextResponse.json({ error: "That facility is in a different organization" }, { status: 403 });
+  }
 
   const entry = await prisma.templateShift.create({
     data: {

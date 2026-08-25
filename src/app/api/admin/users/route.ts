@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, isCorporate } from "@/lib/auth";
+import { orgWhere } from "@/lib/tenant";
 
-// List everyone with their facility + role (corporate only).
+// List everyone with their facility + role (corporate only, own org).
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -11,6 +12,7 @@ export async function GET() {
   }
 
   const users = await prisma.user.findMany({
+    where: orgWhere(user),
     orderBy: [{ role: "asc" }, { name: "asc" }],
     select: {
       id: true,

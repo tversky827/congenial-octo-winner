@@ -18,26 +18,34 @@ function slot(weekStart: Date, dayOffset: number, start: string, end: string) {
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
+  // The tenant / organization everything belongs to.
+  const org = await prisma.organization.upsert({
+    where: { slug: "goldwater-care" },
+    update: {},
+    create: { name: "Goldwater Care", slug: "goldwater-care" },
+  });
+
   // Facilities (each has its own shift board).
   const sunrise = await prisma.facility.upsert({
     where: { id: "seed-sunrise" },
-    update: {},
-    create: { id: "seed-sunrise", name: "Sunrise House", address: "120 Elm St" },
+    update: { organizationId: org.id },
+    create: { id: "seed-sunrise", name: "Sunrise House", address: "120 Elm St", organizationId: org.id },
   });
   const main = await prisma.facility.upsert({
     where: { id: "seed-main" },
-    update: {},
-    create: { id: "seed-main", name: "Goldwater Main", address: "500 Center Ave" },
+    update: { organizationId: org.id },
+    create: { id: "seed-main", name: "Goldwater Main", address: "500 Center Ave", organizationId: org.id },
   });
 
-  // Corporate oversight account (sees all facilities).
+  // Corporate oversight account (sees all facilities in the org).
   const corporate = await prisma.user.upsert({
     where: { email: "corporate@goldwatercare.com" },
-    update: {},
+    update: { organizationId: org.id },
     create: {
       email: "corporate@goldwatercare.com",
       name: "Corporate Admin",
       role: "CORPORATE",
+      organizationId: org.id,
       passwordHash,
     },
   });
@@ -45,11 +53,12 @@ async function main() {
   // A facility scheduler for each site.
   await prisma.user.upsert({
     where: { email: "sunrise.manager@goldwatercare.com" },
-    update: {},
+    update: { organizationId: org.id },
     create: {
       email: "sunrise.manager@goldwatercare.com",
       name: "Morgan (Sunrise)",
       role: "MANAGER",
+      organizationId: org.id,
       facilityId: sunrise.id,
       position: "Scheduler",
       passwordHash,
@@ -57,11 +66,12 @@ async function main() {
   });
   await prisma.user.upsert({
     where: { email: "main.manager@goldwatercare.com" },
-    update: {},
+    update: { organizationId: org.id },
     create: {
       email: "main.manager@goldwatercare.com",
       name: "Alex (Main)",
       role: "MANAGER",
+      organizationId: org.id,
       facilityId: main.id,
       position: "Scheduler",
       passwordHash,
@@ -76,6 +86,7 @@ async function main() {
       email: "jordan@goldwatercare.com",
       name: "Jordan Lee",
       role: "WORKER",
+      organizationId: org.id,
       facilityId: sunrise.id,
       position: "CNA",
       baseRate: 22,
@@ -89,6 +100,7 @@ async function main() {
       email: "sam@goldwatercare.com",
       name: "Sam Rivera",
       role: "WORKER",
+      organizationId: org.id,
       facilityId: main.id,
       position: "Nurse",
       baseRate: 40,
