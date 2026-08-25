@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isSuperAdmin, isCorporate, isManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { TopBar } from "@/components/TopBar";
 import { BottomNav } from "@/components/BottomNav";
@@ -11,7 +11,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const role = user.role as Role;
+  // Map the (possibly new) role set onto the three nav personas. Super admins
+  // navigate as corporate.
+  const role: Role = isCorporate(user) ? "CORPORATE" : isManager(user) ? "MANAGER" : "WORKER";
 
   // Facility context shown in the top bar.
   let facilityLabel = "All facilities";
@@ -28,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col">
-      <TopBar name={user.name} role={role} facilityLabel={facilityLabel} />
+      <TopBar name={user.name} role={role} facilityLabel={facilityLabel} superAdmin={isSuperAdmin(user)} />
       {needsCorporateSetup && (
         <Link
           href="/setup"

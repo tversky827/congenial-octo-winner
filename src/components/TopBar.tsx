@@ -13,10 +13,12 @@ export function TopBar({
   name,
   role,
   facilityLabel,
+  superAdmin = false,
 }: {
   name: string;
   role: "CORPORATE" | "MANAGER" | "WORKER";
   facilityLabel: string;
+  superAdmin?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const firstName = name.split(" ")[0];
@@ -52,6 +54,15 @@ export function TopBar({
             <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
             <div className="absolute right-0 top-11 z-20 w-44 overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-slate-200">
               <div className="border-b border-slate-100 px-3 py-2 text-xs text-slate-500">{name}</div>
+              {superAdmin && (
+                <Link
+                  href="/super"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                >
+                  Platform console
+                </Link>
+              )}
               <button
                 onClick={logout}
                 className="w-full px-3 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50"
