@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ShiftCard, type ShiftCardData } from "@/components/ShiftCard";
+import { CallOffButton } from "@/components/CallOffButton";
 import { PageHeader, EmptyState } from "@/components/Page";
 import type { Shift } from "@prisma/client";
 
@@ -66,9 +67,16 @@ export default async function MyShiftsPage() {
                 Confirmed ({confirmed.length})
               </h2>
               <div className="space-y-3">
-                {confirmed.map((s) => (
-                  <ShiftCard key={s.id} shift={toCardData(s)} viewerRole="WORKER" viewerRate={user.baseRate} myClaimStatus="APPROVED" showActions={false} />
-                ))}
+                {confirmed.map((s) => {
+                  // Only allow calling off shifts that haven't started yet.
+                  const upcoming = s.startTime.getTime() > Date.now();
+                  return (
+                    <div key={s.id}>
+                      <ShiftCard shift={toCardData(s)} viewerRole="WORKER" viewerRate={user.baseRate} myClaimStatus="APPROVED" showActions={false} />
+                      {upcoming && <CallOffButton shiftId={s.id} />}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}

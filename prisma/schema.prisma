@@ -174,6 +174,7 @@ model User {
   postedShifts    Shift[]        @relation("PostedBy")
   assignedShifts  Shift[]        @relation("AssignedShifts")
   claims          Claim[]
+  callOffs        CallOff[]      @relation("CallOffs")
   notifications   Notification[]
   auditLogs       AuditLog[]
 
@@ -218,7 +219,8 @@ model Shift {
   assignedToId String?
   assignedTo   User?   @relation("AssignedShifts", fields: [assignedToId], references: [id])
 
-  claims Claim[]
+  claims   Claim[]
+  callOffs CallOff[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -226,6 +228,24 @@ model Shift {
   @@index([facilityId, status, startTime])
   @@index([scheduleId])
   @@index([assignedToId])
+}
+
+// A record of an employee (or a scheduler on their behalf) calling off a shift
+// they were assigned to. Kept for attendance/reliability reporting; reopening
+// the shift to the marketplace is a separate effect handled in the route.
+model CallOff {
+  id        String   @id @default(cuid())
+  shiftId   String
+  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  workerId  String
+  worker    User     @relation("CallOffs", fields: [workerId], references: [id], onDelete: Cascade)
+  // Who recorded it (the worker themselves, or a scheduler/admin).
+  recordedById String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([workerId])
 }
 
 model Claim {

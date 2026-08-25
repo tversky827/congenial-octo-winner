@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessFacility } from "@/lib/access";
 import { notifyFacilityManagers } from "@/lib/notify";
 import { claimSchema } from "@/lib/validation";
+import { checkEligibility } from "@/lib/eligibility";
+import { workerCommitments } from "@/lib/commitments";
 
 // Worker claims a shift (creates a PENDING claim awaiting manager approval).
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -19,14 +20,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const shift = await prisma.shift.findUnique({ where: { id: params.id } });
   if (!shift) return NextResponse.json({ error: "Shift not found" }, { status: 404 });
-  if (!canAccessFacility(user, shift.facilityId)) {
-    return NextResponse.json({ error: "That shift is at a different facility" }, { status: 403 });
-  }
-  if (shift.position !== user.position) {
-    return NextResponse.json({ error: "That shift is for a different role" }, { status: 403 });
-  }
-  if (shift.status !== "OPEN") {
-    return NextResponse.json({ error: "This shift is no longer open" }, { status: 409 });
+
+  // Eligibility is enforced on the server: facility, role, open status, and no
+  // overlap with a shift this worker is already committed to.
+  const commitments = await workerCommitments(user.id, shift.id);
+  const eligibility = checkEligibility(
+    { active: user.active, facilityId: user.facilityId, position: user.position },
+    shift,
+    commitments
+  );
+  if (!eligibility.eligible) {
+    const status = eligibility.reason === "NOT_OPEN" || eligibility.reason === "OVERLAP" ? 409 : 403;
+    return NextResponse.json({ error: eligibility.message }, { status });
   }
 
   const existing = await prisma.claim.findUnique({

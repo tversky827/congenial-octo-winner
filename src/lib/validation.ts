@@ -42,6 +42,10 @@ export const claimSchema = z.object({
   message: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
+export const callOffSchema = z.object({
+  reason: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
 export const decideClaimSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
 });

@@ -6,6 +6,8 @@ import { sameOrg } from "@/lib/tenant";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { decideClaimSchema } from "@/lib/validation";
+import { rangesOverlap } from "@/lib/eligibility";
+import { workerCommitments } from "@/lib/commitments";
 
 // Manager approves or rejects a specific claim.
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -44,8 +46,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ ok: true });
   }
 
-  // APPROVED: fill the shift atomically so two concurrent approvals can't both
-  // win. The conditional update on status="OPEN" is the single source of truth —
+  // APPROVED: reject the approval if the worker is now double-booked — they may
+  // have picked up an overlapping shift since claiming this one.
+  const commitments = await workerCommitments(claim.workerId, claim.shiftId);
+  if (commitments.some((c) => rangesOverlap(c, claim.shift))) {
+    return NextResponse.json(
+      { error: `${claim.worker.name} is already booked for an overlapping shift.` },
+      { status: 409 }
+    );
+  }
+
+  // Fill the shift atomically so two concurrent approvals can't both win. The
+  // conditional update on status="OPEN" is the single source of truth —
   // exactly one caller flips it and gets the shift.
   const filled = await prisma.shift.updateMany({
     where: { id: claim.shiftId, status: "OPEN" },

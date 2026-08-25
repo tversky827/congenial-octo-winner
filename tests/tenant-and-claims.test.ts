@@ -4,6 +4,7 @@ import { orgWhere } from "@/lib/tenant";
 
 async function reset() {
   // Delete in FK-safe order.
+  await prisma.callOff.deleteMany();
   await prisma.claim.deleteMany();
   await prisma.shift.deleteMany();
   await prisma.schedule.deleteMany();
@@ -70,5 +71,43 @@ describe("atomic shift fill (no double-booking)", () => {
     const after = await prisma.shift.findUnique({ where: { id: shift.id } });
     expect(after?.status).toBe("FILLED");
     expect([w1.id, w2.id]).toContain(after?.assignedToId);
+  });
+});
+
+describe("call-off reopens the shift", () => {
+  it("clears the assignment, records the call-off, and reopens to the marketplace", async () => {
+    const org = await prisma.organization.create({ data: { name: "Org", slug: "org-co" } });
+    const facility = await prisma.facility.create({ data: { name: "F", organizationId: org.id } });
+    const poster = await prisma.user.create({
+      data: { email: "p2@x.com", name: "Poster", role: "CORPORATE", organizationId: org.id, passwordHash: "x" },
+    });
+    const worker = await prisma.user.create({
+      data: { email: "wc@x.com", name: "WC", role: "WORKER", organizationId: org.id, facilityId: facility.id, position: "CNA", passwordHash: "x" },
+    });
+    const schedule = await prisma.schedule.create({
+      data: { facilityId: facility.id, weekStart: new Date("2026-08-31T00:00:00Z"), published: true, publishedAt: new Date() },
+    });
+    const shift = await prisma.shift.create({
+      data: {
+        title: "CNA shift", position: "CNA", facilityId: facility.id, scheduleId: schedule.id,
+        status: "FILLED", assignedToId: worker.id, postedById: poster.id,
+        startTime: new Date("2026-09-02T13:00:00Z"), endTime: new Date("2026-09-02T21:00:00Z"),
+      },
+    });
+
+    // Mirror the call-off route's core effect (published schedule → OPEN).
+    await prisma.$transaction([
+      prisma.shift.update({ where: { id: shift.id }, data: { status: "OPEN", assignedToId: null } }),
+      prisma.callOff.create({ data: { shiftId: shift.id, workerId: worker.id, recordedById: worker.id, reason: "sick" } }),
+    ]);
+
+    const after = await prisma.shift.findUnique({ where: { id: shift.id } });
+    expect(after?.status).toBe("OPEN");
+    expect(after?.assignedToId).toBeNull();
+
+    const callOffs = await prisma.callOff.findMany({ where: { shiftId: shift.id } });
+    expect(callOffs).toHaveLength(1);
+    expect(callOffs[0].reason).toBe("sick");
+    expect(callOffs[0].workerId).toBe(worker.id);
   });
 });
