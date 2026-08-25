@@ -29,6 +29,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
   const report = await orgReport(facilities, from, to);
   const t = report.totals;
 
+  const timesheetHref = `/api/reports/timesheet?from=${from.toISOString()}&to=${to.toISOString()}`;
+
   return (
     <div>
       <div className="mb-4 flex gap-1 rounded-xl bg-slate-100 p-1 text-xs font-semibold">
@@ -80,8 +82,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
             ))}
           </div>
 
+          <a
+            href={timesheetHref}
+            className="mt-4 flex items-center justify-center rounded-xl bg-slate-800 py-2.5 text-sm font-semibold text-white"
+          >
+            ⬇ Export timesheet (CSV)
+          </a>
           <p className="mt-3 text-center text-[11px] text-slate-400">
             Labor cost uses actual clocked pay where available, otherwise the scheduled projection.
+            The timesheet exports every clocked shift in this period.
           </p>
         </>
       )}
