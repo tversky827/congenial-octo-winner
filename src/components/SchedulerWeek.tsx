@@ -221,6 +221,9 @@ export function SchedulerWeek(props: Props) {
                         {s.agencyLabel && (
                           <p className="mt-1 text-xs font-medium text-purple-700">🏢 Agency: {s.agencyLabel}</p>
                         )}
+                        {!s.assignedToId && !s.agencyLabel && (
+                          <ShiftSuggestions shiftId={s.id} onAssign={(workerId) => assign(s.id, workerId)} />
+                        )}
                         {!s.assignedToId && !s.agencyLabel && props.agencies.length > 0 && (
                           <select
                             className="input mt-2 py-2 text-xs"
@@ -262,6 +265,84 @@ export function SchedulerWeek(props: Props) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+interface Suggestion {
+  id: string;
+  name: string;
+  score: number;
+  projectedHours: number;
+  wouldOvertime: boolean;
+  reliabilityScore: number | null;
+  reasons: string[];
+}
+
+// "Suggest best fit": fetches ranked eligible staff for an unfilled shift and
+// lets the scheduler assign one in a click. The ranking is explained inline.
+function ShiftSuggestions({ shiftId, onAssign }: { shiftId: string; onAssign: (workerId: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [list, setList] = useState<Suggestion[] | null>(null);
+
+  async function load() {
+    setOpen(true);
+    if (list) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/shifts/${shiftId}/suggestions`);
+      const data = await res.json().catch(() => ({}));
+      setList(res.ok ? data.suggestions ?? [] : []);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={load}
+        className="mt-2 text-xs font-medium text-brand-600 hover:text-brand-700"
+      >
+        ✨ Suggest best fit
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded-xl bg-brand-50/60 p-2 ring-1 ring-brand-100">
+      {loading ? (
+        <p className="px-1 py-2 text-xs text-slate-500">Ranking staff…</p>
+      ) : !list || list.length === 0 ? (
+        <p className="px-1 py-2 text-xs text-slate-500">No eligible staff to suggest.</p>
+      ) : (
+        <div className="space-y-1">
+          {list.map((s, i) => (
+            <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1.5 shadow-sm">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-800">
+                  {i === 0 && <span className="mr-1">⭐</span>}{s.name}
+                  <span className="ml-1 text-xs font-normal text-slate-400">
+                    {s.reliabilityScore !== null ? `${s.reliabilityScore}% reliable` : "new"}
+                  </span>
+                </p>
+                <p className="truncate text-[11px] text-slate-400">{s.reasons.join(" · ")}</p>
+              </div>
+              <button
+                className="shrink-0 rounded-lg bg-brand-600 px-2 py-1 text-xs font-semibold text-white"
+                onClick={() => onAssign(s.id)}
+              >
+                Assign
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <button type="button" onClick={() => setOpen(false)} className="mt-1 px-1 text-[11px] text-slate-400 hover:text-slate-600">
+        Hide
+      </button>
     </div>
   );
 }
