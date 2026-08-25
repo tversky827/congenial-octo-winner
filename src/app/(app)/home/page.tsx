@@ -6,6 +6,8 @@ import { orgWhere } from "@/lib/tenant";
 import { weekStartOf } from "@/lib/week";
 import { facilityWeekCoverage } from "@/lib/coverageData";
 import { STATUS_META, type CoverageStatus } from "@/lib/coverage";
+import { insightsFor } from "@/lib/insightsData";
+import { SEVERITY_META, type Insight } from "@/lib/insights";
 import { PageHeader } from "@/components/Page";
 import { formatMoney } from "@/lib/format";
 
@@ -60,6 +62,8 @@ async function CorporateHome({ user }: { user: Awaited<ReturnType<typeof getCurr
   return (
     <div>
       <PageHeader title="Today" subtitle="Your organization at a glance." />
+
+      <InsightsFeed user={me} />
 
       <div className={`card mb-4 flex items-center justify-between ${orgMeta.tone}`}>
         <div>
@@ -135,6 +139,8 @@ async function SchedulerHome({ user }: { user: Awaited<ReturnType<typeof getCurr
   return (
     <div>
       <PageHeader title="Today" subtitle={facility?.name ?? undefined} />
+
+      <InsightsFeed user={me} />
 
       <div className={`card mb-4 ${meta.tone}`}>
         <p className="text-xs font-medium uppercase tracking-wide opacity-70">Coverage today</p>
@@ -225,6 +231,38 @@ async function EmployeeHome({ user }: { user: Awaited<ReturnType<typeof getCurre
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="Open for you" value={openForMe} href="/shifts" />
         <StatCard label="Awaiting approval" value={pendingClaims} href="/my-shifts" />
+      </div>
+    </div>
+  );
+}
+
+async function InsightsFeed({ user }: { user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>> }) {
+  const insights = await insightsFor(user);
+  if (insights.length === 0) {
+    return (
+      <div className="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        ✓ All clear — no coverage, credential, or overtime alerts right now.
+      </div>
+    );
+  }
+  return (
+    <div className="mb-4">
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Needs your attention</h2>
+      <div className="space-y-2">
+        {insights.slice(0, 6).map((ins: Insight) => {
+          const meta = SEVERITY_META[ins.severity];
+          const body = (
+            <div className={`rounded-2xl px-4 py-3 ring-1 ${meta.tone}`}>
+              <p className="text-sm font-semibold">{meta.dot} {ins.title}</p>
+              <p className="mt-0.5 text-xs opacity-80">{ins.detail}</p>
+            </div>
+          );
+          return ins.link ? (
+            <Link key={ins.id} href={ins.link} className="block">{body}</Link>
+          ) : (
+            <div key={ins.id}>{body}</div>
+          );
+        })}
       </div>
     </div>
   );
