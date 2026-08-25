@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
-  const { name, departmentId, licensed } = parsed.data;
+  const { name, departmentId, licensed, requiredCredential } = parsed.data;
 
   if (departmentId) {
     const dept = await prisma.department.findUnique({ where: { id: departmentId } });
@@ -73,6 +73,7 @@ export async function POST(req: Request) {
       name,
       departmentId: departmentId || null,
       licensed: !!licensed,
+      requiredCredential: requiredCredential || null,
     },
   });
   await audit({

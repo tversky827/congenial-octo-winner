@@ -81,8 +81,11 @@ model Position {
   departmentId   String?
   department     Department? @relation(fields: [departmentId], references: [id])
   name           String
-  // Requires a professional license — used later by the credential/eligibility engine.
+  // Requires a professional license — used by the credential/eligibility engine.
   licensed       Boolean  @default(false)
+  // If set, a worker must hold a valid (non-expired) credential of this type to
+  // be eligible for this position's shifts, e.g. "RN License".
+  requiredCredential String?
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
 
@@ -176,6 +179,7 @@ model User {
   claims          Claim[]
   callOffs        CallOff[]      @relation("CallOffs")
   timeEntries     TimeEntry[]    @relation("TimeEntries")
+  credentials     Credential[]   @relation("Credentials")
   notifications   Notification[]
   auditLogs       AuditLog[]
 
@@ -287,6 +291,24 @@ model TimeEntry {
   @@unique([shiftId, workerId])
   @@index([workerId])
   @@index([facilityId])
+}
+
+// A license or certification held by an employee, with an optional expiration.
+// The compliance engine flags expired/expiring credentials and the eligibility
+// engine can require a valid one for licensed positions.
+model Credential {
+  id         String    @id @default(cuid())
+  workerId   String
+  worker     User      @relation("Credentials", fields: [workerId], references: [id], onDelete: Cascade)
+  // The credential type, e.g. "RN License", "BLS/CPR", "TB Test".
+  type       String
+  number     String?
+  issuedAt   DateTime?
+  expiresAt  DateTime?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  @@index([workerId])
 }
 
 model Notification {

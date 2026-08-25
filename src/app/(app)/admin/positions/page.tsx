@@ -16,7 +16,7 @@ export default async function AdminPositionsPage() {
       ? prisma.position.findMany({
           where: { organizationId: orgId, active: true },
           orderBy: { name: "asc" },
-          select: { id: true, name: true, licensed: true, department: { select: { id: true, name: true } } },
+          select: { id: true, name: true, licensed: true, requiredCredential: true, department: { select: { id: true, name: true } } },
         })
       : Promise.resolve([]),
   ]);

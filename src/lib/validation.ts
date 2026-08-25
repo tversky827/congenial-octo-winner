@@ -84,6 +84,16 @@ export const positionCreateSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(60),
   departmentId: z.string().trim().optional().or(z.literal("")),
   licensed: z.boolean().optional().default(false),
+  requiredCredential: z.string().trim().max(80).optional().or(z.literal("")),
+});
+
+export const credentialCreateSchema = z.object({
+  workerId: z.string().min(1),
+  type: z.string().trim().min(1, "Type is required").max(80),
+  number: z.string().trim().max(80).optional().or(z.literal("")),
+  // Accept YYYY-MM-DD or ISO; validated/parsed in the route.
+  issuedAt: z.string().trim().optional().or(z.literal("")),
+  expiresAt: z.string().trim().optional().or(z.literal("")),
 });
 
 export const generateWeekSchema = z.object({

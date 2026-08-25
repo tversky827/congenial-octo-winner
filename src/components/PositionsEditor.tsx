@@ -8,6 +8,7 @@ export interface PositionRow {
   id: string;
   name: string;
   licensed: boolean;
+  requiredCredential: string | null;
   department: { id: string; name: string } | null;
 }
 
@@ -22,7 +23,7 @@ export function PositionsEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dept, setDept] = useState("");
-  const [pos, setPos] = useState({ name: "", departmentId: "", licensed: false });
+  const [pos, setPos] = useState({ name: "", departmentId: "", licensed: false, requiredCredential: "" });
 
   async function call(fn: () => Promise<Response>) {
     setBusy(true); setError(null);
@@ -43,7 +44,7 @@ export function PositionsEditor({
   async function addPos(e: React.FormEvent) {
     e.preventDefault();
     const ok = await call(() => fetch("/api/positions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pos) }));
-    if (ok) setPos({ name: "", departmentId: "", licensed: false });
+    if (ok) setPos({ name: "", departmentId: "", licensed: false, requiredCredential: "" });
   }
   const retire = (id: string) => call(() => fetch(`/api/positions/${id}`, { method: "DELETE" }));
 
@@ -85,6 +86,18 @@ export function PositionsEditor({
             <input type="checkbox" checked={pos.licensed} onChange={(e) => setPos({ ...pos, licensed: e.target.checked })} />
             Requires a professional license (RN, LPN…)
           </label>
+          <div>
+            <label className="label">Required credential (optional)</label>
+            <input
+              className="input py-2 text-sm"
+              value={pos.requiredCredential}
+              onChange={(e) => setPos({ ...pos, requiredCredential: e.target.value })}
+              placeholder="e.g. RN License — staff must hold a valid one"
+            />
+            <p className="mt-1 text-[11px] text-slate-400">
+              If set, only staff with a valid (non-expired) credential of this type can claim these shifts.
+            </p>
+          </div>
           <button className="btn-primary w-full" disabled={busy}>Add position</button>
         </form>
 
@@ -99,6 +112,7 @@ export function PositionsEditor({
                 <span className="font-semibold text-slate-800">{p.name}</span>
                 {p.department && <span className="text-slate-500"> · {p.department.name}</span>}
                 {p.licensed && <span className="chip ml-2 bg-brand-50 text-brand-700">licensed</span>}
+                {p.requiredCredential && <span className="chip ml-2 bg-amber-50 text-amber-700">needs {p.requiredCredential}</span>}
               </span>
               <button className="text-xs text-slate-400 hover:text-red-600" onClick={() => retire(p.id)} disabled={busy}>Remove</button>
             </div>

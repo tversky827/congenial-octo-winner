@@ -38,8 +38,8 @@ async function main() {
   });
   await prisma.position.upsert({
     where: { organizationId_name: { organizationId: org.id, name: "Nurse" } },
-    update: { departmentId: nursing.id, licensed: true, active: true },
-    create: { organizationId: org.id, departmentId: nursing.id, name: "Nurse", licensed: true },
+    update: { departmentId: nursing.id, licensed: true, active: true, requiredCredential: "RN License" },
+    create: { organizationId: org.id, departmentId: nursing.id, name: "Nurse", licensed: true, requiredCredential: "RN License" },
   });
 
   // Facilities (each has its own shift board).
@@ -96,6 +96,27 @@ async function main() {
   });
 
   // Staff, each tied to one facility.
+  const sam = await prisma.user.upsert({
+    where: { email: "sam@goldwatercare.com" },
+    update: {},
+    create: {
+      email: "sam@goldwatercare.com",
+      name: "Sam Rivera",
+      role: "WORKER",
+      organizationId: org.id,
+      facilityId: main.id,
+      position: "Nurse",
+      baseRate: 40,
+      passwordHash,
+    },
+  });
+  // Sam holds a valid RN license (so they clear the Nurse credential gate).
+  if ((await prisma.credential.count({ where: { workerId: sam.id } })) === 0) {
+    await prisma.credential.create({
+      data: { workerId: sam.id, type: "RN License", number: "RN-4402", expiresAt: new Date("2027-06-30T00:00:00Z") },
+    });
+  }
+
   const jordan = await prisma.user.upsert({
     where: { email: "jordan@goldwatercare.com" },
     update: {},
@@ -107,20 +128,6 @@ async function main() {
       facilityId: sunrise.id,
       position: "CNA",
       baseRate: 22,
-      passwordHash,
-    },
-  });
-  await prisma.user.upsert({
-    where: { email: "sam@goldwatercare.com" },
-    update: {},
-    create: {
-      email: "sam@goldwatercare.com",
-      name: "Sam Rivera",
-      role: "WORKER",
-      organizationId: org.id,
-      facilityId: main.id,
-      position: "Nurse",
-      baseRate: 40,
       passwordHash,
     },
   });

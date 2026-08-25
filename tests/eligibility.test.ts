@@ -53,4 +53,13 @@ describe("checkEligibility", () => {
     const other = { startTime: new Date("2026-09-02T13:00:00Z"), endTime: new Date("2026-09-02T21:00:00Z") };
     expect(checkEligibility(worker, shift, [other]).eligible).toBe(true);
   });
+  it("rejects when a required credential is missing", () => {
+    expect(checkEligibility(worker, shift, { credentialSatisfied: false }).reason).toBe("MISSING_CREDENTIAL");
+  });
+  it("allows when the required credential is satisfied", () => {
+    expect(checkEligibility(worker, shift, { credentialSatisfied: true }).eligible).toBe(true);
+  });
+  it("skips the credential check when none is required", () => {
+    expect(checkEligibility(worker, shift, { credentialSatisfied: undefined }).eligible).toBe(true);
+  });
 });

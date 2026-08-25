@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { orgWhere } from "@/lib/tenant";
 import { orgPositionNamesOrDefault } from "@/lib/positionsServer";
 import { workersAttendance } from "@/lib/attendanceData";
+import { workerCompliance } from "@/lib/credentialsServer";
 import { PeopleManager } from "@/components/PeopleManager";
 
 export const dynamic = "force-dynamic";
@@ -39,17 +40,22 @@ export default async function AdminPeoplePage() {
 
   const positions = await orgPositionNamesOrDefault(me.organizationId);
 
-  // Reliability for staff (workers) only.
+  // Reliability + compliance for staff (workers) only.
   const workerIds = people.filter((p) => p.role === "WORKER").map((p) => p.id);
   const reliability = await workersAttendance(workerIds);
+  const compliance = new Map(
+    await Promise.all(workerIds.map(async (id) => [id, await workerCompliance(id)] as const))
+  );
 
   // Serialize dates to YYYY-MM-DD for the client date inputs.
   const rows = people.map((p) => {
     const r = reliability.get(p.id);
+    const c = compliance.get(p.id);
     return {
       ...p,
       hireDate: p.hireDate ? p.hireDate.toISOString().slice(0, 10) : null,
       reliability: r ? { score: r.score, tier: r.tier, counts: r.counts } : null,
+      compliance: c ? { total: c.total, expired: c.expired, expiring: c.expiring, compliant: c.compliant } : null,
     };
   });
 

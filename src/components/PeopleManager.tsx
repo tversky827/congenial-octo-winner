@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TIER_META, type ReliabilityTier, type AttendanceCounts } from "@/lib/reliability";
+import { CredentialsManager } from "./CredentialsManager";
 
 export interface PersonRow {
   id: string;
@@ -19,6 +20,7 @@ export interface PersonRow {
   notes: string | null;
   facility: { id: string; name: string } | null;
   reliability: { score: number | null; tier: ReliabilityTier; counts: AttendanceCounts } | null;
+  compliance: { total: number; expired: number; expiring: number; compliant: boolean } | null;
 }
 
 const EMPLOYMENT_LABEL: Record<string, string> = {
@@ -93,6 +95,12 @@ export function PeopleManager({
                     {TIER_META[p.reliability.tier].label}
                     {p.reliability.score !== null && ` · ${p.reliability.score}`}
                   </span>
+                )}
+                {p.role === "WORKER" && p.compliance && p.compliance.expired > 0 && (
+                  <span className="chip bg-red-50 text-red-700">{p.compliance.expired} expired</span>
+                )}
+                {p.role === "WORKER" && p.compliance && p.compliance.expired === 0 && p.compliance.expiring > 0 && (
+                  <span className="chip bg-amber-50 text-amber-700">{p.compliance.expiring} expiring</span>
                 )}
               </div>
             </div>
@@ -189,6 +197,7 @@ export function PeopleManager({
                       </div>
                     )}
                     <ProfileEditor person={p} saving={savingId === p.id} onSave={(body) => patch(p.id, body)} />
+                    {p.role === "WORKER" && <CredentialsManager workerId={p.id} />}
                   </>
                 )}
 
