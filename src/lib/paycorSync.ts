@@ -79,14 +79,14 @@ export function isActiveStatus(status: string | null | undefined): boolean {
 
 /** Normalize a raw Paycor record into our shape, tolerant of field-name variants. */
 export function normalizePaycorEmployee(raw: RawPaycorEmployee): NormalizedEmployee {
-  const firstName = str(firstDefined(raw, ["firstName", "FirstName", "first_name", "givenName"])) ?? "";
-  const lastName = str(firstDefined(raw, ["lastName", "LastName", "last_name", "familyName", "surname"])) ?? "";
-  const email = str(firstDefined(raw, ["email", "Email", "emailAddress", "workEmail", "primaryEmail"]));
-  const externalId = str(firstDefined(raw, ["employeeNumber", "EmployeeNumber", "employeeId", "id", "associateId"]));
-  const location = str(firstDefined(raw, ["location", "Location", "locationName", "workLocation", "worksite"]));
-  const jobTitle = str(firstDefined(raw, ["position", "Position", "jobTitle", "JobTitle", "title", "positionTitle"]));
-  const status = str(firstDefined(raw, ["employmentStatus", "status", "Status", "employeeStatus"]));
-  const hourlyRate = num(firstDefined(raw, ["payRate", "PayRate", "hourlyRate", "rate", "baseRate", "compensationRate", "annualRate"]));
+  const firstName = str(firstDefined(raw, ["firstName", "FirstName", "first_name", "First Name", "givenName"])) ?? "";
+  const lastName = str(firstDefined(raw, ["lastName", "LastName", "last_name", "Last Name", "familyName", "surname"])) ?? "";
+  const email = str(firstDefined(raw, ["email", "Email", "emailAddress", "Email Address", "workEmail", "Work Email", "primaryEmail"]));
+  const externalId = str(firstDefined(raw, ["employeeNumber", "EmployeeNumber", "Employee Number", "employeeId", "Employee Id", "Employee ID", "id", "associateId", "Associate ID"]));
+  const location = str(firstDefined(raw, ["location", "Location", "locationName", "Location Name", "workLocation", "Work Location", "worksite"]));
+  const jobTitle = str(firstDefined(raw, ["position", "Position", "jobTitle", "JobTitle", "Job Title", "title", "Title", "positionTitle", "Position Title"]));
+  const status = str(firstDefined(raw, ["employmentStatus", "Employment Status", "status", "Status", "employeeStatus", "Employee Status"]));
+  const hourlyRate = num(firstDefined(raw, ["payRate", "PayRate", "Pay Rate", "hourlyRate", "Hourly Rate", "rate", "Rate", "baseRate", "Base Rate", "compensationRate", "annualRate"]));
 
   const name = `${firstName} ${lastName}`.trim() || email || externalId || "Unknown";
 

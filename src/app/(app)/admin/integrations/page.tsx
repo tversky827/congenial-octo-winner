@@ -1,14 +1,16 @@
 import { PaycorPanel } from "@/components/PaycorPanel";
+import { CsvImportPanel } from "@/components/CsvImportPanel";
 
 export const dynamic = "force-dynamic";
 
 export default function AdminIntegrationsPage() {
   return (
-    <div>
-      <p className="mb-3 text-sm text-slate-500">
-        Connect your HR system so employees, their facility, and their pay rates flow in
-        automatically — no manual entry, and rates stay current for the marketplace.
+    <div className="space-y-4">
+      <p className="text-sm text-slate-500">
+        Bring employees, their facility, and their pay rates in from Paycor — no manual entry, and
+        rates stay current for the marketplace. Start with a file import, or connect the live API.
       </p>
+      <CsvImportPanel />
       <PaycorPanel />
       <p className="mt-3 text-center text-[11px] text-slate-400">
         Paycor location maps to facility · job title maps to CNA/Nurse · pay rate becomes each

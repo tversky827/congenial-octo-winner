@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
 import { paycorConfig, fetchPaycorEmployees } from "./paycor";
-import { normalizePaycorEmployee, buildSyncPlan, type SkipReason } from "./paycorSync";
+import { normalizePaycorEmployee, buildSyncPlan, type SkipReason, type NormalizedEmployee } from "./paycorSync";
 import { audit } from "./audit";
 
 export interface SyncSummary {
@@ -21,32 +21,22 @@ async function placeholderHash(): Promise<string> {
   return bcrypt.hash(`imported-${Math.round(Date.now())}-${Math.random()}`, 10);
 }
 
+const EMPTY_REASONS: Record<SkipReason, number> = {
+  "no-email": 0, inactive: 0, "unmapped-role": 0, "unmapped-facility": 0,
+};
+
 /**
- * Pull employees from Paycor and reconcile them into one organization: create
- * missing WORKER accounts and update facility/position/rate on existing ones.
- * Never downgrades a non-worker (manager/corporate) and never overwrites a
- * password. Returns a summary; never throws (errors come back on the summary).
+ * Reconcile a set of normalized employees into one organization: create missing
+ * WORKER accounts and update facility/position/rate on existing ones. Never
+ * downgrades a non-worker (manager/corporate) and never overwrites a password.
+ * Shared by the live Paycor sync and the CSV file import.
  */
-export async function runPaycorSync(
+export async function reconcileEmployees(
   organizationId: string,
-  actor: { id: string; name: string }
+  employees: NormalizedEmployee[],
+  actor: { id: string; name: string },
+  action = "integration.paycor_sync"
 ): Promise<SyncSummary> {
-  const empty: Record<SkipReason, number> = {
-    "no-email": 0, inactive: 0, "unmapped-role": 0, "unmapped-facility": 0,
-  };
-  const cfg = paycorConfig();
-  if (!cfg) {
-    return { ok: false, error: "Paycor is not configured.", fetched: 0, created: 0, updated: 0, skipped: 0, skippedByReason: empty };
-  }
-
-  let raw;
-  try {
-    raw = await fetchPaycorEmployees(cfg);
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Paycor fetch failed", fetched: 0, created: 0, updated: 0, skipped: 0, skippedByReason: empty };
-  }
-
-  const employees = raw.map(normalizePaycorEmployee);
   const facilities = await prisma.facility.findMany({
     where: { organizationId, active: true },
     select: { id: true, name: true },
@@ -93,12 +83,12 @@ export async function runPaycorSync(
     });
   }
 
-  const skippedByReason = { ...empty };
+  const skippedByReason = { ...EMPTY_REASONS };
   for (const s of plan.skipped) skippedByReason[s.reason]++;
 
   await audit({
     actorId: actor.id, actorName: actor.name, organizationId,
-    action: "integration.paycor_sync", entityType: "Organization", entityId: organizationId,
+    action, entityType: "Organization", entityId: organizationId,
     after: { fetched: employees.length, created: plan.create.length, updated: plan.update.length, skipped: plan.skipped.length },
   });
 
@@ -110,4 +100,25 @@ export async function runPaycorSync(
     skipped: plan.skipped.length,
     skippedByReason,
   };
+}
+
+/**
+ * Pull employees from Paycor's live API and reconcile them into the org. Never
+ * throws — failures come back on the summary.
+ */
+export async function runPaycorSync(
+  organizationId: string,
+  actor: { id: string; name: string }
+): Promise<SyncSummary> {
+  const cfg = paycorConfig();
+  if (!cfg) {
+    return { ok: false, error: "Paycor is not configured.", fetched: 0, created: 0, updated: 0, skipped: 0, skippedByReason: { ...EMPTY_REASONS } };
+  }
+  let raw;
+  try {
+    raw = await fetchPaycorEmployees(cfg);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Paycor fetch failed", fetched: 0, created: 0, updated: 0, skipped: 0, skippedByReason: { ...EMPTY_REASONS } };
+  }
+  return reconcileEmployees(organizationId, raw.map(normalizePaycorEmployee), actor, "integration.paycor_sync");
 }

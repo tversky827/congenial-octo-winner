@@ -80,6 +80,23 @@ describe("normalizePaycorEmployee", () => {
     expect(n.hourlyRate).toBe(22.5);
     expect(n.active).toBe(true);
   });
+
+  it("reads spaced CSV headers (Paycor export style)", () => {
+    const n = normalizePaycorEmployee({
+      "First Name": "Sam",
+      "Last Name": "Rivera",
+      "Work Email": "sam@x.com",
+      "Employee Number": "E-200",
+      "Location": "Spring Valley",
+      "Job Title": "Registered Nurse",
+      "Employee Status": "Active",
+      "Pay Rate": "$40.00",
+    });
+    expect(n.name).toBe("Sam Rivera");
+    expect(n.email).toBe("sam@x.com");
+    expect(n.jobTitle).toBe("Registered Nurse");
+    expect(n.hourlyRate).toBe(40);
+  });
 });
 
 describe("buildSyncPlan", () => {
