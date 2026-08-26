@@ -185,13 +185,19 @@ model User {
   baseRate     Float    @default(0)
   phone        String?
   // --- Employment profile (HR-facing, optional) ---
-  // External HR/payroll identifier for this person.
+  // External HR/payroll identifier for this person (e.g. Paycor employee number).
   employeeId   String?
+  // Source system this record was synced from, e.g. "paycor" (null = created in-app).
+  source       String?
   // FULL_TIME | PART_TIME | PER_DIEM — drives scheduling & benefits rules later.
   employmentType String? @default("PER_DIEM")
   hireDate     DateTime?
   // Free-form internal notes visible only to schedulers/admins.
   notes        String?
+  // True for accounts created by an import (Paycor) that haven't set a password
+  // yet — they can be scheduled immediately, and claim login by registering
+  // with their work email.
+  mustSetPassword Boolean @default(false)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 

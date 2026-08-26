@@ -56,6 +56,26 @@ export async function POST(req: Request) {
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
+    // Claim path: an imported (Paycor) account that hasn't set a password yet
+    // can be activated here by its owner — set the password and sign them in.
+    // Their facility/position/rate stay as synced from Paycor.
+    if (existing.mustSetPassword && existing.role === "WORKER") {
+      const claimed = await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          passwordHash: await hashPassword(password),
+          mustSetPassword: false,
+          name: existing.name || name,
+        },
+      });
+      await audit({
+        actorId: claimed.id, actorName: claimed.name, organizationId: claimed.organizationId,
+        action: "user.claim_account", entityType: "User", entityId: claimed.id,
+        after: { email: claimed.email },
+      });
+      await createSession(claimed);
+      return NextResponse.json({ id: claimed.id, name: claimed.name, role: claimed.role });
+    }
     return NextResponse.json(
       { error: "An account with that email already exists" },
       { status: 409 }
