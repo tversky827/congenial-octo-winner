@@ -4,6 +4,7 @@ import { getCurrentUser, isCorporate } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { DEFAULT_FACILITY_BUDGET, budgetToRows } from "@/lib/defaultCoverage";
 import { buildWeekFromTemplate } from "@/lib/scheduleBuild";
+import { ensureOrganizationForUser } from "@/lib/org";
 import { weekStartOf } from "@/lib/week";
 
 // One-click load of the budgeted daily coverage for every facility. Idempotent:
@@ -16,10 +17,8 @@ export async function POST() {
   if (!isCorporate(user)) {
     return NextResponse.json({ error: "Corporate access required" }, { status: 403 });
   }
-  if (!user.organizationId) {
-    return NextResponse.json({ error: "Set up your organization first." }, { status: 400 });
-  }
-  const organizationId = user.organizationId;
+  // Self-heal: attach/create an organization if this corporate account has none.
+  const organizationId = await ensureOrganizationForUser(user);
 
   let facilitiesCreated = 0;
   let shiftsCreated = 0;
@@ -28,6 +27,14 @@ export async function POST() {
   let scheduledShifts = 0;
 
   const weekStart = weekStartOf(new Date());
+
+  // Ensure the org has the two staffed positions configured (idempotent).
+  for (const [name, licensed] of [["CNA", false], ["Nurse", true]] as const) {
+    const existing = await prisma.position.findFirst({ where: { organizationId, name } });
+    if (!existing) {
+      await prisma.position.create({ data: { organizationId, name, licensed } });
+    }
+  }
 
   for (const budget of DEFAULT_FACILITY_BUDGET) {
     let facility = await prisma.facility.findFirst({
