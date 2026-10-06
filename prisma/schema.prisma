@@ -121,6 +121,16 @@ model Facility {
   name           String
   // Optional address / description shown to staff.
   address        String?
+  city           String?
+  state          String?
+  zip            String?
+  phone          String?
+  timezone       String?  @default("America/Chicago")
+  // --- Accounting (cost center) ---
+  // Where this facility's Nurse Pool labor is allocated for accounting exports.
+  costCenterCode       String?
+  glAccount            String?
+  payrollAllocationCode String?
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
 
@@ -128,6 +138,9 @@ model Facility {
   shifts         Shift[]
   templateShifts TemplateShift[]
   schedules      Schedule[]
+  eligibilities    NurseFacilityEligibility[]
+  shiftAssignments ShiftAssignment[]
+  costAllocations  LaborCostAllocation[]
 
   @@index([organizationId])
 }
@@ -198,6 +211,16 @@ model User {
   // yet — they can be scheduled immediately, and claim login by registering
   // with their work email.
   mustSetPassword Boolean @default(false)
+  // --- Nurse Pool ---
+  // A pool nurse's PAYROLL HOME is the centralized Nurse Pool, not a facility:
+  // poolMember=true and facilityId stays null. Where they may work is governed
+  // by NurseFacilityEligibility, not by an employer facility.
+  poolMember     Boolean @default(false)
+  licenseType    String? // e.g. "RN", "LPN"
+  licenseNumber  String?
+  licenseExpiry  DateTime?
+  // Per-nurse overtime multiplier override (falls back to org SystemSetting).
+  overtimeMultiplier Float?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
@@ -209,9 +232,15 @@ model User {
   credentials     Credential[]   @relation("Credentials")
   notifications   Notification[]
   auditLogs       AuditLog[]
+  // Pool relations
+  eligibilities   NurseFacilityEligibility[]
+  shiftAssignments ShiftAssignment[]
+  payrollRecords  PayrollRecord[]
+  costAllocations LaborCostAllocation[]
 
   @@index([facilityId])
   @@index([organizationId])
+  @@index([poolMember])
 }
 
 model Shift {
@@ -238,6 +267,13 @@ model Shift {
   overtimeMultiplier Float @default(1.5)
   notes        String?
   status       String   @default("OPEN")
+  // How many nurses this shift needs. Pool shifts can need several; each seat is
+  // one ShiftAssignment. The shift is FILLED when active assignments == nursesNeeded.
+  nursesNeeded Int      @default(1)
+  // Required license for a pool shift, e.g. "RN" (null = any matching position).
+  requiredLicense String?
+  // Per-hour shift differential for pool pay (separate from the flat `bonus`).
+  differentialPerHour Float @default(0)
 
   postedById String
   postedBy   User   @relation("PostedBy", fields: [postedById], references: [id])
@@ -261,6 +297,7 @@ model Shift {
   claims    Claim[]
   callOffs  CallOff[]
   timeEntries TimeEntry[]
+  assignments ShiftAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -314,6 +351,9 @@ model TimeEntry {
   workerId     String
   worker       User      @relation("TimeEntries", fields: [workerId], references: [id], onDelete: Cascade)
   facilityId   String?
+  // The pool shift seat this punch belongs to (null for legacy facility shifts).
+  assignmentId String?   @unique
+  assignment   ShiftAssignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
   clockInAt    DateTime  @default(now())
   clockOutAt   DateTime?
   actualMinutes Int?     // computed at clock-out
@@ -380,4 +420,183 @@ model AuditLog {
 
   @@index([organizationId, createdAt])
   @@index([entityType, entityId])
+}
+
+// =====================================================================
+// Nurse Pool — float-pool model. A nurse's PAYROLL HOME is the pool; the
+// labor EXPENSE is allocated to the facility where each shift was worked.
+// =====================================================================
+
+// Where a pool nurse is permitted to work. Separate from employment — a nurse
+// can be eligible at many facilities without any of them being their employer.
+model NurseFacilityEligibility {
+  id         String   @id @default(cuid())
+  nurseId    String
+  nurse      User     @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  active     Boolean  @default(true)
+  // Facility-specific onboarding gate for claiming shifts there.
+  orientationComplete Boolean @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([nurseId, facilityId])
+  @@index([facilityId])
+}
+
+// One nurse's claim on ONE seat of a shift. The spine of the pool: work
+// location, hours (scheduled/actual/approved), pay, and approval live here.
+model ShiftAssignment {
+  id             String   @id @default(cuid())
+  shiftId        String
+  shift          Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  nurseId        String
+  nurse          User     @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  // Denormalized work location for fast facility-scoped queries & allocation.
+  facilityId     String
+  facility       Facility @relation(fields: [facilityId], references: [id])
+
+  scheduledStart DateTime
+  scheduledEnd   DateTime
+  scheduledHours Float
+  payRate        Float    // the nurse's rate captured at claim time
+  differentialPerHour Float @default(0)
+
+  // CLAIMED → CHECKED_IN → WORKED → PENDING_APPROVAL → APPROVED / CANCELLED / DISPUTED
+  status         String   @default("CLAIMED")
+  claimedAt      DateTime @default(now())
+  checkInAt      DateTime?
+  checkOutAt     DateTime?
+  actualHours    Float?
+
+  // Facility approval of payable hours (authoritative for payroll).
+  approvedHours  Float?
+  regularHours   Float?
+  overtimeHours  Float?
+  grossPay       Float?
+  approvalStatus String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  approvedById   String?
+  approvedAt     DateTime?
+
+  // Cancellation trail (claimed shifts are never deleted).
+  cancelledAt    DateTime?
+  cancelledById  String?
+  cancelReason   String?
+
+  timeEntry      TimeEntry?
+  payrollRecordId String?
+  payrollRecord  PayrollRecord? @relation(fields: [payrollRecordId], references: [id])
+  allocation     LaborCostAllocation?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // A nurse holds at most one assignment per shift.
+  @@unique([shiftId, nurseId])
+  @@index([nurseId, status])
+  @@index([facilityId, status])
+  @@index([shiftId])
+}
+
+// A pay window (default weekly Mon–Sun).
+model PayrollPeriod {
+  id             String   @id @default(cuid())
+  organizationId String
+  startDate      DateTime
+  endDate        DateTime
+  // OPEN → PROCESSING → PENDING_APPROVAL → APPROVED → EXPORTED → CLOSED
+  status         String   @default("OPEN")
+  finalizedAt    DateTime?
+  finalizedById  String?
+  createdAt      DateTime @default(now())
+
+  records        PayrollRecord[]
+  allocations    LaborCostAllocation[]
+
+  @@unique([organizationId, startDate, endDate])
+  @@index([organizationId, status])
+}
+
+// Per nurse, per period — the Nurse Pool payroll record (payroll home = pool).
+model PayrollRecord {
+  id              String   @id @default(cuid())
+  payrollPeriodId String
+  payrollPeriod   PayrollPeriod @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  nurseId         String
+  nurse           User     @relation(fields: [nurseId], references: [id])
+  regularHours    Float    @default(0)
+  overtimeHours   Float    @default(0)
+  regularPay      Float    @default(0)
+  overtimePay     Float    @default(0)
+  differentialPay Float    @default(0)
+  grossPay        Float    @default(0)
+  createdAt       DateTime @default(now())
+
+  assignments     ShiftAssignment[]
+
+  @@unique([payrollPeriodId, nurseId])
+  @@index([nurseId])
+}
+
+// Immutable ledger: one row per approved assignment, allocating its labor cost
+// to the FACILITY where the shift was worked. Never silently modified once a
+// period is finalized — corrections create adjustment rows.
+model LaborCostAllocation {
+  id              String   @id @default(cuid())
+  payrollPeriodId String
+  payrollPeriod   PayrollPeriod @relation(fields: [payrollPeriodId], references: [id])
+  nurseId         String
+  nurse           User     @relation(fields: [nurseId], references: [id])
+  assignmentId    String   @unique
+  assignment      ShiftAssignment @relation(fields: [assignmentId], references: [id])
+  facilityId      String
+  facility        Facility @relation(fields: [facilityId], references: [id])
+  costCenter      String?
+
+  regularHours    Float    @default(0)
+  overtimeHours   Float    @default(0)
+  regularPay      Float    @default(0)
+  overtimePay     Float    @default(0)
+  differentialPay Float    @default(0)
+  totalAllocated  Float    @default(0)
+
+  // POSTED | ADJUSTMENT | REVERSED — adjustments reference the original.
+  entryType       String   @default("POSTED")
+  adjustsId       String?
+  status          String   @default("ALLOCATED") // ALLOCATED | EXPORTED
+  accountingExportId String?
+  createdAt       DateTime @default(now())
+  exportedAt      DateTime?
+
+  @@index([payrollPeriodId])
+  @@index([facilityId])
+  @@index([nurseId])
+}
+
+// A generated accounting export batch (CSV today; integrations later).
+model AccountingExport {
+  id             String   @id @default(cuid())
+  organizationId String
+  payrollPeriodId String?
+  format         String   @default("csv")
+  rowCount       Int      @default(0)
+  totalAmount    Float    @default(0)
+  status         String   @default("GENERATED")
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+}
+
+// Per-org configurable business rules (OT thresholds, rest period, max hours,
+// cancellation window…). Stored as key → JSON value so new rules need no schema
+// change. The app reads these with sensible defaults when a key is unset.
+model SystemSetting {
+  id             String   @id @default(cuid())
+  organizationId String
+  key            String
+  value          String   // JSON-encoded
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, key])
 }

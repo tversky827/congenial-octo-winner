@@ -14,11 +14,12 @@ export type Role =
   | "DEPT_MANAGER" // manages a department's staff/shifts
   | "CHARGE_NURSE" // day-of staffing & attendance
   | "EMPLOYEE" // views schedule, claims shifts
+  | "POOL_NURSE" // centralized float-pool nurse — claims shifts across eligible facilities
   | "AGENCY"; // external staffing agency (future)
 
 export const ROLES: Role[] = [
   "SUPER_ADMIN", "CORPORATE_ADMIN", "FACILITY_ADMIN", "DON",
-  "SCHEDULER", "DEPT_MANAGER", "CHARGE_NURSE", "EMPLOYEE", "AGENCY",
+  "SCHEDULER", "DEPT_MANAGER", "CHARGE_NURSE", "EMPLOYEE", "POOL_NURSE", "AGENCY",
 ];
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -30,6 +31,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   DEPT_MANAGER: "Department manager",
   CHARGE_NURSE: "Charge nurse",
   EMPLOYEE: "Employee",
+  POOL_NURSE: "Pool nurse",
   AGENCY: "Agency",
 };
 
@@ -94,6 +96,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   CHARGE_NURSE: ["schedule.view", "shift.assign", "pickup.approve", "timecard.view"],
   EMPLOYEE: ["marketplace.claim", "schedule.view"],
+  POOL_NURSE: ["marketplace.claim", "schedule.view"],
   AGENCY: ["schedule.view"],
 };
 
