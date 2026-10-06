@@ -1,5 +1,16 @@
 import { prisma } from "./db";
 import { credentialState } from "./credentials";
+import { sendEmail, renderNotificationEmail } from "./email";
+
+async function emailNurse(userId: string, title: string, body: string, link: string) {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, notifyEmail: true, mustSetPassword: true },
+  });
+  if (u?.email && u.notifyEmail && !u.mustSetPassword) {
+    await sendEmail({ to: u.email, ...renderNotificationEmail(title, body, link) }).catch(() => {});
+  }
+}
 
 const DAY = 86_400_000;
 
@@ -33,14 +44,10 @@ export async function scanExpiringForOrg(
     });
     if (recent) continue;
     const when = n.licenseExpiry!.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
-    await prisma.notification.create({
-      data: {
-        userId: n.id,
-        title: state === "expired" ? "License expired" : "License expiring soon",
-        body: `Your ${n.licenseType ?? "license"} ${state === "expired" ? "expired" : "expires"} ${when}. Update it to keep claiming shifts.`,
-        link: "/pool",
-      },
-    });
+    const title = state === "expired" ? "License expired" : "License expiring soon";
+    const body = `Your ${n.licenseType ?? "license"} ${state === "expired" ? "expired" : "expires"} ${when}. Update it to keep claiming shifts.`;
+    await prisma.notification.create({ data: { userId: n.id, title, body, link: "/pool" } });
+    await emailNurse(n.id, title, body, "/pool");
     created++;
   }
 
@@ -58,14 +65,10 @@ export async function scanExpiringForOrg(
     });
     if (recent) continue;
     const when = c.expiresAt!.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
-    await prisma.notification.create({
-      data: {
-        userId: c.workerId,
-        title: `${c.type} ${state === "expired" ? "expired" : "expiring"}`,
-        body: `Your ${c.type} ${state === "expired" ? "expired" : "expires"} ${when}.`,
-        link: "/pool",
-      },
-    });
+    const title = `${c.type} ${state === "expired" ? "expired" : "expiring"}`;
+    const body = `Your ${c.type} ${state === "expired" ? "expired" : "expires"} ${when}.`;
+    await prisma.notification.create({ data: { userId: c.workerId, title, body, link: "/pool" } });
+    await emailNurse(c.workerId, title, body, "/pool");
     created++;
   }
 

@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { matchesPreferences, parsePreferences } from "./shiftMatch";
 import { scheduledHours } from "./poolRules";
+import { sendEmails, renderNotificationEmail } from "./email";
 
 /**
  * Notify pool nurses that a new shift is available. Recipients must be eligible
@@ -28,7 +29,7 @@ export async function notifyEligibleNurses(shiftId: string): Promise<number> {
       active: true,
       ...(shift.requiredLicense ? { licenseType: shift.requiredLicense } : {}),
     },
-    select: { id: true, baseRate: true, prefMinRate: true, prefFacilityIds: true, prefDaysOfWeek: true },
+    select: { id: true, email: true, baseRate: true, notifyEmail: true, mustSetPassword: true, prefMinRate: true, prefFacilityIds: true, prefDaysOfWeek: true },
   });
   if (nurses.length === 0) return 0;
 
@@ -44,13 +45,19 @@ export async function notifyEligibleNurses(shiftId: string): Promise<number> {
   );
   if (recipients.length === 0) return 0;
 
+  const title = "New shift available";
+  const body = `${shift.facility?.name} · ${dateLabel} · ${hours}h ${shift.requiredLicense ?? shift.position}`;
+
   await prisma.notification.createMany({
-    data: recipients.map((n) => ({
-      userId: n.id,
-      title: "New shift available",
-      body: `${shift.facility?.name} · ${dateLabel} · ${hours}h ${shift.requiredLicense ?? shift.position}`,
-      link: "/pool",
-    })),
+    data: recipients.map((n) => ({ userId: n.id, title, body, link: "/pool" })),
   });
+
+  // Email the opted-in recipients (best-effort; no-op until email is configured).
+  const emailable = recipients.filter((n) => n.email && n.notifyEmail && !n.mustSetPassword);
+  if (emailable.length > 0) {
+    const msg = renderNotificationEmail(title, body, "/pool");
+    await sendEmails(emailable.map((n) => ({ to: n.email!, ...msg }))).catch(() => {});
+  }
+
   return recipients.length;
 }
