@@ -25,7 +25,7 @@ const ICONS = {
   coverage: "M3 12h4l2 5 4-13 2 8h6",
 };
 
-export function BottomNav({ role }: { role: "CORPORATE" | "MANAGER" | "WORKER" }) {
+export function BottomNav({ role, poolNurse = false }: { role: "CORPORATE" | "MANAGER" | "WORKER"; poolNurse?: boolean }) {
   const pathname = usePathname();
   const [unread, setUnread] = useState(0);
 
@@ -54,7 +54,13 @@ export function BottomNav({ role }: { role: "CORPORATE" | "MANAGER" | "WORKER" }
   }, [pathname]);
 
   let items: Item[];
-  if (role === "CORPORATE") {
+  if (poolNurse) {
+    items = [
+      { href: "/pool", label: "Pool Shifts", icon: <Icon path={ICONS.shifts} /> },
+      { href: "/pool/my", label: "My Shifts", icon: <Icon path={ICONS.mine} /> },
+      { href: "/notifications", label: "Alerts", icon: <Icon path={ICONS.alerts} />, badge: true },
+    ];
+  } else if (role === "CORPORATE") {
     items = [
       { href: "/coverage", label: "Coverage", icon: <Icon path={ICONS.coverage} /> },
       { href: "/schedule", label: "Schedule", icon: <Icon path={ICONS.schedule} /> },
@@ -82,10 +88,11 @@ export function BottomNav({ role }: { role: "CORPORATE" | "MANAGER" | "WORKER" }
       <div className="mx-auto flex max-w-2xl items-stretch justify-around">
         {items.map((item) => {
           const matchPrefix = item.href.startsWith("/admin") ? "/admin" : item.href;
-          const active =
-            item.href === "/shifts"
-              ? pathname === "/shifts"
-              : pathname === item.href || pathname.startsWith(matchPrefix);
+          // Exact-match roots that have child routes so they don't stay lit.
+          const exactOnly = item.href === "/shifts" || item.href === "/pool";
+          const active = exactOnly
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(matchPrefix);
           return (
             <Link
               key={item.href}

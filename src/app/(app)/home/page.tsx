@@ -23,6 +23,7 @@ export default async function HomePage() {
 
   if (isCorporate(user)) return <CorporateHome user={user} />;
   if (isManager(user)) return <SchedulerHome user={user} />;
+  if (user.poolMember) redirect("/pool");
   return <EmployeeHome user={user} />;
 }
 

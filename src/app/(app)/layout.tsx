@@ -11,13 +11,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  // Map the (possibly new) role set onto the three nav personas. Super admins
-  // navigate as corporate.
+  // Map the (possibly new) role set onto the nav personas. Super admins
+  // navigate as corporate; pool nurses have their own nav.
+  const poolNurse = user.poolMember === true && !isCorporate(user) && !isManager(user);
   const role: Role = isCorporate(user) ? "CORPORATE" : isManager(user) ? "MANAGER" : "WORKER";
 
   // Facility context shown in the top bar.
   let facilityLabel = "All facilities";
-  if (role !== "CORPORATE") {
+  if (poolNurse) {
+    facilityLabel = "Nurse Pool";
+  } else if (role !== "CORPORATE") {
     const facility = user.facilityId
       ? await prisma.facility.findUnique({ where: { id: user.facilityId }, select: { name: true } })
       : null;
@@ -40,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
       )}
       <main className="flex-1 px-4 pb-28 pt-4">{children}</main>
-      <BottomNav role={role} />
+      <BottomNav role={role} poolNurse={poolNurse} />
       <RegisterSW />
     </div>
   );

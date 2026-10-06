@@ -221,6 +221,66 @@ async function main() {
     });
   }
 
+  // ---- Nurse Pool demo (clearly labelled) ----
+  // A few pool nurses eligible across several facilities, plus open RN pool
+  // shifts at a couple of them, so the pool board has something to claim.
+  const poolFacilityNames = ["Bloomington", "Pontiac", "Clinton", "Peoria", "Princeton"];
+  const poolFacilities = await prisma.facility.findMany({
+    where: { organizationId: org.id, name: { in: poolFacilityNames } },
+    select: { id: true, name: true },
+  });
+  // Give those facilities cost centers for accounting export.
+  for (const f of poolFacilities) {
+    await prisma.facility.update({
+      where: { id: f.id },
+      data: { costCenterCode: `CC-${f.name.slice(0, 4).toUpperCase()}`, glAccount: "Nursing Labor", payrollAllocationCode: "NP" },
+    });
+  }
+
+  const poolNurseSpecs = [
+    { email: "jane.pool@goldwatercare.com", name: "Jane Smith (DEMO pool)", license: "RN", rate: 38 },
+    { email: "marco.pool@goldwatercare.com", name: "Marco Diaz (DEMO pool)", license: "RN", rate: 40 },
+    { email: "aisha.pool@goldwatercare.com", name: "Aisha Khan (DEMO pool)", license: "LPN", rate: 32 },
+  ];
+  for (const spec of poolNurseSpecs) {
+    const nurse = await prisma.user.upsert({
+      where: { email: spec.email },
+      update: { poolMember: true, licenseType: spec.license, baseRate: spec.rate, role: "POOL_NURSE", facilityId: null },
+      create: {
+        email: spec.email, name: spec.name, role: "POOL_NURSE", organizationId: org.id,
+        passwordHash, poolMember: true, facilityId: null, position: "Nurse",
+        licenseType: spec.license, baseRate: spec.rate,
+      },
+    });
+    // Eligible (and oriented) at every pool facility.
+    for (const f of poolFacilities) {
+      await prisma.nurseFacilityEligibility.upsert({
+        where: { nurseId_facilityId: { nurseId: nurse.id, facilityId: f.id } },
+        update: { active: true, orientationComplete: true },
+        create: { nurseId: nurse.id, facilityId: f.id, active: true, orientationComplete: true },
+      });
+    }
+  }
+
+  // Open RN pool shifts over the next few days at two facilities.
+  if ((await prisma.shift.count({ where: { requiredLicense: "RN" } })) === 0 && poolFacilities.length > 0) {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    for (let d = 1; d <= 4; d++) {
+      for (const f of poolFacilities.slice(0, 3)) {
+        const start = new Date(today.getTime() + d * 86400000 + 7 * 3600000); // 7a
+        const end = new Date(start.getTime() + 8 * 3600000); // 3p
+        await prisma.shift.create({
+          data: {
+            title: "RN pool shift", position: "Nurse", facilityId: f.id,
+            startTime: start, endTime: end, status: "OPEN", nursesNeeded: 1,
+            requiredLicense: "RN", postedById: corporate.id,
+          },
+        });
+      }
+    }
+  }
+
   console.log("Seed complete.");
   console.log("--------------------------------------------------");
   console.log("Corporate (sees all):   corporate@goldwatercare.com");
