@@ -46,6 +46,15 @@ export const callOffSchema = z.object({
   reason: z.string().trim().max(300).optional().or(z.literal("")),
 });
 
+export const approveHoursSchema = z.object({
+  approvedHours: z.coerce.number().min(0).max(48),
+});
+
+export const payrollPeriodSchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD"),
+});
+
 export const decideClaimSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
 });
