@@ -268,8 +268,11 @@ model Shift {
   notes        String?
   status       String   @default("OPEN")
   // How many nurses this shift needs. Pool shifts can need several; each seat is
-  // one ShiftAssignment. The shift is FILLED when active assignments == nursesNeeded.
+  // one ShiftAssignment. The shift is FILLED when seatsFilled == nursesNeeded.
   nursesNeeded Int      @default(1)
+  // Atomic seat counter — a conditional increment (seatsFilled < nursesNeeded)
+  // is how two nurses can take two seats but never the same last seat.
+  seatsFilled  Int      @default(0)
   // Required license for a pool shift, e.g. "RN" (null = any matching position).
   requiredLicense String?
   // Per-hour shift differential for pool pay (separate from the flat `bonus`).
