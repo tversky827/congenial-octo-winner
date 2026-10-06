@@ -55,6 +55,30 @@ export const payrollPeriodSchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD"),
 });
 
+export const poolNurseCreateSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80),
+  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  licenseType: z.string().trim().min(1, "License type is required").max(20),
+  licenseNumber: z.string().trim().max(60).optional().or(z.literal("")),
+  licenseExpiry: z.string().trim().optional().or(z.literal("")),
+  baseRate: z.coerce.number().min(0).max(10000).default(0),
+});
+
+export const poolNurseUpdateSchema = z.object({
+  licenseType: z.string().trim().min(1).max(20).optional(),
+  licenseNumber: z.string().trim().max(60).nullable().optional().or(z.literal("")),
+  licenseExpiry: z.string().trim().nullable().optional().or(z.literal("")),
+  baseRate: z.coerce.number().min(0).max(10000).optional(),
+  active: z.boolean().optional(),
+  poolMember: z.boolean().optional(),
+});
+
+export const eligibilitySchema = z.object({
+  facilityId: z.string().min(1),
+  active: z.boolean().optional(),
+  orientationComplete: z.boolean().optional(),
+});
+
 export const decideClaimSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
 });
