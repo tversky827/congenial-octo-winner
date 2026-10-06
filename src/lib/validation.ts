@@ -178,7 +178,7 @@ export const assignShiftSchema = z.object({
 export const employmentTypes = ["FULL_TIME", "PART_TIME", "PER_DIEM"] as const;
 
 export const userUpdateSchema = z.object({
-  role: z.enum(["CORPORATE", "MANAGER", "WORKER"]).optional(),
+  role: z.enum(["CORPORATE", "MANAGER", "WORKER", "FACILITY_ADMIN"]).optional(),
   facilityId: z.string().trim().nullable().optional(),
   position: z.string().trim().min(1).max(60).nullable().optional(),
   active: z.boolean().optional(),

@@ -31,8 +31,13 @@ const EMPLOYMENT_LABEL: Record<string, string> = {
 
 const ROLE_LABEL: Record<string, string> = {
   CORPORATE: "Corporate",
+  CORPORATE_ADMIN: "Corporate",
+  FACILITY_ADMIN: "Facility admin",
   MANAGER: "Scheduler",
+  SCHEDULER: "Scheduler",
   WORKER: "Staff",
+  EMPLOYEE: "Staff",
+  POOL_NURSE: "Pool nurse",
 };
 
 export function PeopleManager({
@@ -121,6 +126,7 @@ export function PeopleManager({
                   >
                     <option value="WORKER">Staff</option>
                     <option value="MANAGER">Scheduler</option>
+                    <option value="FACILITY_ADMIN">Facility admin</option>
                     <option value="CORPORATE">Corporate</option>
                   </select>
                 </div>

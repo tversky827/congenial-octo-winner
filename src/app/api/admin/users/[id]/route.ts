@@ -33,15 +33,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: "That role isn't configured for your organization" }, { status: 400 });
   }
 
-  const role = parsed.data.role ?? (target.role as "CORPORATE" | "MANAGER" | "WORKER");
-  // Corporate users have no facility; workers and managers must have one.
+  const role = parsed.data.role ?? target.role;
+  // Corporate users have no facility; everyone else (facility admin, scheduler,
+  // worker) must belong to one.
   let facilityId: string | null = target.facilityId;
   if (parsed.data.facilityId !== undefined) facilityId = parsed.data.facilityId;
   if (role === "CORPORATE") {
     facilityId = null;
   } else if (!facilityId) {
     return NextResponse.json(
-      { error: "Workers and schedulers must be assigned to a facility" },
+      { error: "Facility admins, schedulers, and staff must be assigned to a facility" },
       { status: 400 }
     );
   }

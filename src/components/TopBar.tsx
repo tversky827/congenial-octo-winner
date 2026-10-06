@@ -12,11 +12,13 @@ const ROLE_LABEL: Record<string, string> = {
 export function TopBar({
   name,
   role,
+  roleLabel,
   facilityLabel,
   superAdmin = false,
 }: {
   name: string;
   role: "CORPORATE" | "MANAGER" | "WORKER";
+  roleLabel?: string;
   facilityLabel: string;
   superAdmin?: boolean;
 }) {
@@ -36,7 +38,7 @@ export function TopBar({
         <div className="leading-tight">
           <p className="text-sm font-semibold text-slate-900">Hi, {firstName}</p>
           <p className="text-xs text-slate-500">
-            {ROLE_LABEL[role] ?? role} · {facilityLabel}
+            {roleLabel ?? ROLE_LABEL[role] ?? role} · {facilityLabel}
           </p>
         </div>
       </Link>

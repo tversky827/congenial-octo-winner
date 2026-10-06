@@ -221,6 +221,23 @@ async function main() {
     });
   }
 
+  // A facility administrator for Bloomington (scoped to that one facility).
+  const bloomington = await prisma.facility.findFirst({ where: { organizationId: org.id, name: "Bloomington" }, select: { id: true } });
+  if (bloomington) {
+    await prisma.user.upsert({
+      where: { email: "bloomington.admin@goldwatercare.com" },
+      update: { role: "FACILITY_ADMIN", facilityId: bloomington.id, organizationId: org.id },
+      create: {
+        email: "bloomington.admin@goldwatercare.com",
+        name: "Taylor (Bloomington Admin)",
+        role: "FACILITY_ADMIN",
+        organizationId: org.id,
+        facilityId: bloomington.id,
+        passwordHash,
+      },
+    });
+  }
+
   // ---- Nurse Pool demo (clearly labelled) ----
   // A few pool nurses eligible across several facilities, plus open RN pool
   // shifts at a couple of them, so the pool board has something to claim.

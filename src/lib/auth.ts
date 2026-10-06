@@ -98,6 +98,11 @@ export function isSuperAdmin(user: Pick<User, "role"> | null): boolean {
   return !!user && normalizeRole(user.role) === "SUPER_ADMIN";
 }
 
+/** Administrator of a single facility — scoped to their own facility only. */
+export function isFacilityAdmin(user: Pick<User, "role"> | null): boolean {
+  return !!user && normalizeRole(user.role) === "FACILITY_ADMIN";
+}
+
 /** Anyone who can build schedules / assign staff (corporate, admins, schedulers…). */
 export function canManage(user: Pick<User, "role"> | null): boolean {
   return can(user, "shift.assign") || can(user, "schedule.publish");

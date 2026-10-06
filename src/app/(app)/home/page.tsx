@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentUser, isCorporate, isManager } from "@/lib/auth";
+import { getCurrentUser, isCorporate, isManager, isFacilityAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { orgWhere } from "@/lib/tenant";
 import { weekStartOf } from "@/lib/week";
@@ -22,6 +22,7 @@ export default async function HomePage() {
   if (!user) redirect("/login");
 
   if (isCorporate(user)) return <CorporateHome user={user} />;
+  if (isFacilityAdmin(user)) redirect("/facility");
   if (isManager(user)) return <SchedulerHome user={user} />;
   if (user.poolMember) redirect("/pool");
   return <EmployeeHome user={user} />;
