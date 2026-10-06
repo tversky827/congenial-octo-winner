@@ -23,6 +23,8 @@ export async function PATCH(req: Request) {
       ...(p.facilityIds !== undefined ? { prefFacilityIds: JSON.stringify(p.facilityIds) } : {}),
       ...(p.daysOfWeek !== undefined ? { prefDaysOfWeek: JSON.stringify(p.daysOfWeek) } : {}),
       ...(p.notifyEmail !== undefined ? { notifyEmail: p.notifyEmail } : {}),
+      ...(p.notifySms !== undefined ? { notifySms: p.notifySms } : {}),
+      ...(p.phone !== undefined ? { phone: p.phone || null } : {}),
     },
   });
   return NextResponse.json({ ok: true });

@@ -226,6 +226,7 @@ model User {
   prefFacilityIds String? // JSON array of preferred facility ids ("[]"/null = any)
   prefDaysOfWeek String?  // JSON array of weekdays 0=Sun..6=Sat (null = any)
   notifyEmail    Boolean  @default(true)
+  notifySms      Boolean  @default(false) // opt-in (needs a phone number)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 

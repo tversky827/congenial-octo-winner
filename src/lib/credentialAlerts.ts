@@ -1,14 +1,19 @@
 import { prisma } from "./db";
 import { credentialState } from "./credentials";
-import { sendEmail, renderNotificationEmail } from "./email";
+import { sendEmail, renderNotificationEmail, appUrl } from "./email";
+import { sendSms, renderNotificationSms } from "./sms";
 
-async function emailNurse(userId: string, title: string, body: string, link: string) {
+async function alertNurse(userId: string, title: string, body: string, link: string) {
   const u = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, notifyEmail: true, mustSetPassword: true },
+    select: { email: true, phone: true, notifyEmail: true, notifySms: true, mustSetPassword: true },
   });
-  if (u?.email && u.notifyEmail && !u.mustSetPassword) {
+  if (!u || u.mustSetPassword) return;
+  if (u.email && u.notifyEmail) {
     await sendEmail({ to: u.email, ...renderNotificationEmail(title, body, link) }).catch(() => {});
+  }
+  if (u.phone && u.notifySms) {
+    await sendSms({ to: u.phone, body: renderNotificationSms(title, body, link, appUrl()) }).catch(() => {});
   }
 }
 
@@ -47,7 +52,7 @@ export async function scanExpiringForOrg(
     const title = state === "expired" ? "License expired" : "License expiring soon";
     const body = `Your ${n.licenseType ?? "license"} ${state === "expired" ? "expired" : "expires"} ${when}. Update it to keep claiming shifts.`;
     await prisma.notification.create({ data: { userId: n.id, title, body, link: "/pool" } });
-    await emailNurse(n.id, title, body, "/pool");
+    await alertNurse(n.id, title, body, "/pool");
     created++;
   }
 
@@ -68,7 +73,7 @@ export async function scanExpiringForOrg(
     const title = `${c.type} ${state === "expired" ? "expired" : "expiring"}`;
     const body = `Your ${c.type} ${state === "expired" ? "expired" : "expires"} ${when}.`;
     await prisma.notification.create({ data: { userId: c.workerId, title, body, link: "/pool" } });
-    await emailNurse(c.workerId, title, body, "/pool");
+    await alertNurse(c.workerId, title, body, "/pool");
     created++;
   }
 

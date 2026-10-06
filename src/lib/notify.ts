@@ -1,32 +1,40 @@
 import { prisma } from "./db";
 import { sendEmail, renderNotificationEmail } from "./email";
+import { sendSms, renderNotificationSms } from "./sms";
+import { appUrl } from "./email";
 
 interface NotifyArgs {
   userId: string;
   title: string;
   body: string;
   link?: string;
-  // Also send this notification by email (best-effort; respects the recipient's
-  // email preference). In-app is always written.
+  // Also deliver by these channels (best-effort; each respects the recipient's
+  // preference). In-app is always written.
   email?: boolean;
+  sms?: boolean;
 }
 
-/** Create an in-app notification for a single user, optionally emailing it too. */
-export async function notify({ userId, title, body, link, email }: NotifyArgs): Promise<void> {
+/** Create an in-app notification for a single user, optionally email + SMS too. */
+export async function notify({ userId, title, body, link, email, sms }: NotifyArgs): Promise<void> {
   await prisma.notification.create({
     data: { userId, title, body, link },
   });
 
-  if (email) {
-    const u = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, poolMember: true, notifyEmail: true, mustSetPassword: true },
-    });
-    // Email real addresses only, and honor a pool nurse's email opt-out.
-    if (u?.email && !u.mustSetPassword && (!u.poolMember || u.notifyEmail)) {
-      const msg = renderNotificationEmail(title, body, link ?? null);
-      await sendEmail({ to: u.email, ...msg }).catch(() => {});
-    }
+  if (!email && !sms) return;
+
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, phone: true, poolMember: true, notifyEmail: true, notifySms: true, mustSetPassword: true },
+  });
+  if (!u || u.mustSetPassword) return;
+
+  // Email: real address + (for pool nurses) email opt-out honored.
+  if (email && u.email && (!u.poolMember || u.notifyEmail)) {
+    await sendEmail({ to: u.email, ...renderNotificationEmail(title, body, link ?? null) }).catch(() => {});
+  }
+  // SMS: opt-in only, needs a phone number.
+  if (sms && u.phone && u.notifySms) {
+    await sendSms({ to: u.phone, body: renderNotificationSms(title, body, link ?? null, appUrl()) }).catch(() => {});
   }
 }
 

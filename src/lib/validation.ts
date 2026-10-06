@@ -100,6 +100,8 @@ export const nursePreferencesSchema = z.object({
   facilityIds: z.array(z.string()).optional(),
   daysOfWeek: z.array(z.coerce.number().int().min(0).max(6)).optional(),
   notifyEmail: z.boolean().optional(),
+  notifySms: z.boolean().optional(),
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
 });
 
 export const decideClaimSchema = z.object({

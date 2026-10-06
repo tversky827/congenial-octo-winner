@@ -1,11 +1,13 @@
 import { PaycorPanel } from "@/components/PaycorPanel";
 import { CsvImportPanel } from "@/components/CsvImportPanel";
 import { emailConfigured } from "@/lib/email";
+import { smsConfigured } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
 export default function AdminIntegrationsPage() {
   const email = emailConfigured();
+  const sms = smsConfigured();
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-500">
@@ -32,6 +34,28 @@ export default function AdminIntegrationsPage() {
               <li>RESEND_API_KEY</li>
               <li>EMAIL_FROM</li>
               <li>APP_URL</li>
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Text messages (SMS)</p>
+            <p className="text-xs text-slate-500">Text nurses who opt in — fastest for last-minute coverage.</p>
+          </div>
+          <span className={`chip ${sms ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+            {sms ? "Connected" : "Not connected"}
+          </span>
+        </div>
+        {!sms && (
+          <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Set these (Twilio) to turn SMS on; nurses opt in from their alert preferences:
+            <ul className="mt-1 list-inside list-disc font-mono">
+              <li>TWILIO_ACCOUNT_SID</li>
+              <li>TWILIO_AUTH_TOKEN</li>
+              <li>TWILIO_FROM</li>
             </ul>
           </div>
         )}

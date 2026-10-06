@@ -31,6 +31,8 @@ export default async function PoolPreferencesPage() {
           facilityIds: prefs.facilityIds ?? [],
           daysOfWeek: prefs.daysOfWeek ?? [],
           notifyEmail: nurse.notifyEmail,
+          notifySms: nurse.notifySms,
+          phone: nurse.phone ?? "",
         }}
       />
     </div>

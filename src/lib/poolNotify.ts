@@ -1,7 +1,8 @@
 import { prisma } from "./db";
 import { matchesPreferences, parsePreferences } from "./shiftMatch";
 import { scheduledHours } from "./poolRules";
-import { sendEmails, renderNotificationEmail } from "./email";
+import { sendEmails, renderNotificationEmail, appUrl } from "./email";
+import { sendSmsBatch, renderNotificationSms } from "./sms";
 
 /**
  * Notify pool nurses that a new shift is available. Recipients must be eligible
@@ -29,7 +30,7 @@ export async function notifyEligibleNurses(shiftId: string): Promise<number> {
       active: true,
       ...(shift.requiredLicense ? { licenseType: shift.requiredLicense } : {}),
     },
-    select: { id: true, email: true, baseRate: true, notifyEmail: true, mustSetPassword: true, prefMinRate: true, prefFacilityIds: true, prefDaysOfWeek: true },
+    select: { id: true, email: true, phone: true, baseRate: true, notifyEmail: true, notifySms: true, mustSetPassword: true, prefMinRate: true, prefFacilityIds: true, prefDaysOfWeek: true },
   });
   if (nurses.length === 0) return 0;
 
@@ -52,11 +53,17 @@ export async function notifyEligibleNurses(shiftId: string): Promise<number> {
     data: recipients.map((n) => ({ userId: n.id, title, body, link: "/pool" })),
   });
 
-  // Email the opted-in recipients (best-effort; no-op until email is configured).
-  const emailable = recipients.filter((n) => n.email && n.notifyEmail && !n.mustSetPassword);
+  // Email + SMS the opted-in recipients (best-effort; no-op until configured).
+  const active = recipients.filter((n) => !n.mustSetPassword);
+  const emailable = active.filter((n) => n.email && n.notifyEmail);
   if (emailable.length > 0) {
     const msg = renderNotificationEmail(title, body, "/pool");
     await sendEmails(emailable.map((n) => ({ to: n.email!, ...msg }))).catch(() => {});
+  }
+  const smsable = active.filter((n) => n.phone && n.notifySms);
+  if (smsable.length > 0) {
+    const text = renderNotificationSms(title, body, "/pool", appUrl());
+    await sendSmsBatch(smsable.map((n) => ({ to: n.phone!, body: text }))).catch(() => {});
   }
 
   return recipients.length;

@@ -46,6 +46,7 @@ export async function approveAssignmentHours(
     body: `${approvedHours} hours were approved for your shift. It'll be on your next pay.`,
     link: "/pool/my",
     email: true,
+    sms: true,
   }).catch(() => {});
 
   return updated;
