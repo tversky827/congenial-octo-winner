@@ -3,6 +3,7 @@
   "buildCommand": "npm run build:vercel",
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/integrations/paycor/sync", "schedule": "0 8 * * *" }
+    { "path": "/api/integrations/paycor/sync", "schedule": "0 8 * * *" },
+    { "path": "/api/pool/alerts/scan", "schedule": "0 13 * * *" }
   ]
 }

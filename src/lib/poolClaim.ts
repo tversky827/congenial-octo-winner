@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { audit } from "./audit";
+import { notifyPoolApprovers } from "./notify";
 import { getPoolRules } from "./poolSettings";
 import { credentialState } from "./credentials";
 import { hasOverlap, violatesRest, exceedsMaxWeeklyHours, scheduledHours, type TimeRange } from "./poolRules";
@@ -151,6 +152,13 @@ export async function claimPoolShift(nurseId: string, shiftId: string) {
     action: "pool.claim", entityType: "ShiftAssignment", entityId: assignment.id,
     after: { shiftId, facilityId: shift.facilityId, hours },
   });
+
+  // Let the facility know a pool nurse picked up the shift.
+  await notifyPoolApprovers(shift.facilityId, {
+    title: "Pool shift claimed",
+    body: `${nurse.name} claimed a shift at ${shift.facility?.name ?? "your facility"}.`,
+    link: "/admin/approvals",
+  }).catch(() => {});
 
   return assignment;
 }

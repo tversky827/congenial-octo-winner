@@ -79,6 +79,29 @@ export const eligibilitySchema = z.object({
   orientationComplete: z.boolean().optional(),
 });
 
+export const poolShiftCreateSchema = z
+  .object({
+    facilityId: z.string().min(1, "Choose a facility"),
+    requiredLicense: z.string().trim().min(1, "Choose a license").max(20),
+    startTime: z.string().datetime({ offset: true }).or(z.string().min(1)),
+    endTime: z.string().datetime({ offset: true }).or(z.string().min(1)),
+    nursesNeeded: z.coerce.number().int().min(1).max(50).default(1),
+    differentialPerHour: z.coerce.number().min(0).max(1000).default(0),
+    breakMinutes: z.coerce.number().int().min(0).max(240).default(0),
+    notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  })
+  .refine((v) => new Date(v.endTime).getTime() > new Date(v.startTime).getTime(), {
+    message: "End time must be after start time",
+    path: ["endTime"],
+  });
+
+export const nursePreferencesSchema = z.object({
+  minRate: z.coerce.number().min(0).max(10000).nullable().optional(),
+  facilityIds: z.array(z.string()).optional(),
+  daysOfWeek: z.array(z.coerce.number().int().min(0).max(6)).optional(),
+  notifyEmail: z.boolean().optional(),
+});
+
 export const decideClaimSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
 });

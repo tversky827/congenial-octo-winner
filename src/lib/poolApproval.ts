@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { audit } from "./audit";
+import { notify } from "./notify";
 
 /**
  * Facility approval of payable hours for an assignment. Approved hours — not raw
@@ -37,5 +38,14 @@ export async function approveAssignmentHours(
     before: { approvedHours: assignment.approvedHours },
     after: { approvedHours },
   });
+
+  // Tell the nurse their hours were approved.
+  await notify({
+    userId: assignment.nurseId,
+    title: "Hours approved",
+    body: `${approvedHours} hours were approved for your shift. It'll be on your next pay.`,
+    link: "/pool/my",
+  }).catch(() => {});
+
   return updated;
 }

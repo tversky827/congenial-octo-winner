@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -82,6 +83,11 @@ export default async function MyPoolShiftsPage() {
         <p className="text-xs font-medium uppercase tracking-wide text-white/70">Earned (approved)</p>
         <p className="text-2xl font-bold">{formatMoney(earned)}</p>
       </div>
+
+      <Link href="/pool/preferences" className="mb-4 flex items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-medium text-brand-700 shadow-sm ring-1 ring-slate-100">
+        <span>🔔 Shift alert preferences</span>
+        <span className="text-slate-400">›</span>
+      </Link>
 
       {nothing ? (
         <EmptyState emoji="🗓️" title="No shifts yet" body="Claim open shifts from the Pool Shifts tab and they'll show here." />

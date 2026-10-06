@@ -221,6 +221,11 @@ model User {
   licenseExpiry  DateTime?
   // Per-nurse overtime multiplier override (falls back to org SystemSetting).
   overtimeMultiplier Float?
+  // --- Shift-matching preferences (pool nurse) ---
+  prefMinRate    Float?   // only notify about shifts paying at least this
+  prefFacilityIds String? // JSON array of preferred facility ids ("[]"/null = any)
+  prefDaysOfWeek String?  // JSON array of weekdays 0=Sun..6=Sat (null = any)
+  notifyEmail    Boolean  @default(true)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 

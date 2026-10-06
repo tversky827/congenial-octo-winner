@@ -42,3 +42,29 @@ export async function notifyFacilityManagers(
     })),
   });
 }
+
+/**
+ * Notify the people who approve a facility's pool hours: corporate admins
+ * (all facilities) and that facility's admins/schedulers (any role flavour).
+ */
+export async function notifyPoolApprovers(
+  facilityId: string | null,
+  args: Omit<NotifyArgs, "userId">
+): Promise<void> {
+  const corporateRoles = ["CORPORATE", "CORPORATE_ADMIN", "SUPER_ADMIN"];
+  const facilityRoles = ["MANAGER", "FACILITY_ADMIN", "SCHEDULER", "DON", "CHARGE_NURSE", "DEPT_MANAGER"];
+  const recipients = await prisma.user.findMany({
+    where: {
+      active: true,
+      OR: [
+        { role: { in: corporateRoles } },
+        ...(facilityId ? [{ role: { in: facilityRoles }, facilityId }] : []),
+      ],
+    },
+    select: { id: true },
+  });
+  if (recipients.length === 0) return;
+  await prisma.notification.createMany({
+    data: recipients.map((m) => ({ userId: m.id, title: args.title, body: args.body, link: args.link })),
+  });
+}
